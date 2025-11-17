@@ -1,0 +1,325 @@
+<!-- 🌐 Http Mock Manager - Interfaz gráfica estilo chat flotante -->
+<div 
+  class="http-mock-manager" 
+  [style.bottom.px]="position().bottom"
+  [style.right.px]="position().right"
+  [class.visible]="showForm()"
+  [class.hidden]="!showForm()">
+  
+  <!-- Header con drag handle y controles -->
+  <div class="header" (mousedown)="startDrag($event)">
+    <div class="header-title">
+      <span class="icon">🌐</span>
+      <span>HTTP Mock Manager</span>
+    </div>
+    <div class="header-controls">
+      <button class="control-btn" (click)="toggleForm()" title="Minimizar/Restaurar">
+        {{ showForm() ? '▼' : '▲' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Contenido principal -->
+  <div class="content" [class.collapsed]="!showForm()">
+    
+    <!-- Navegación de pestañas -->
+    <div class="tab-navigation">
+      <button 
+        class="tab-btn" 
+        *ngFor="let tab of ['Context', 'Load', 'Mock', 'Headers', 'Body', 'Backup']; let i = index"
+        [class.active]="activeTab() === i"
+        (click)="setActiveTab(i)">
+        {{ tab }}
+      </button>
+    </div>
+
+    <!-- ========== TAB 0: CONTEXT ========== -->
+    <div class="tab-content" [class.active]="activeTab() === 0">
+      <div class="form-group">
+        <label for="contextId">Context ID:</label>
+        <input 
+          id="contextId"
+          type="number" 
+          [value]="contextId" 
+          (input)="onInputNumber($event, 'contextId')"
+          min="1"
+          class="form-input">
+      </div>
+      
+      <div class="form-group">
+        <label for="contextSelect">Context Type:</label>
+        <select 
+          id="contextSelect"
+          [value]="selectedContext?.id || ''"
+          (change)="onContextTypeChange($any($event.target).value)"
+          class="form-select">
+          <option *ngFor="let option of contextOptionsState()" [value]="option.id">
+            {{ option.value }}
+          </option>
+        </select>
+      </div>
+      
+      <div class="form-actions">
+        <button 
+          class="btn btn-primary" 
+          (click)="loadContextById()"
+          [disabled]="isLoading()">
+          {{ isLoading() ? 'Loading...' : 'Load Context' }}
+        </button>
+      </div>
+
+      <!-- Statistics Display -->
+      <div class="statistics" *ngIf="statistics()">
+        <h4>📊 Statistics</h4>
+        <div class="stat-item">
+          <span class="stat-label">Total Mocks:</span>
+          <span class="stat-value">{{ statistics()!.totalMocks }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Avg Delay:</span>
+          <span class="stat-value">{{ statistics()!.averageDelayMs }}ms</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Most Used Services:</span>
+          <span class="stat-value">{{ statistics()!.mostUsedServiceCodes.length }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== TAB 1: LOAD ========== -->
+    <div class="tab-content" [class.active]="activeTab() === 1">
+      <div class="form-group">
+        <label for="serviceCodeLoad">Service Code:</label>
+        <input 
+          id="serviceCodeLoad"
+          type="text" 
+          [(ngModel)]="serviceCode"
+          placeholder="Enter service code to load mocks..."
+          class="form-input">
+      </div>
+      
+      <div class="form-actions">
+        <button 
+          class="btn btn-primary" 
+          (click)="loadMocksByServiceCode(serviceCode)"
+          [disabled]="!serviceCode.trim() || isLoading()">
+          {{ isLoading() ? 'Loading...' : 'Load Mocks' }}
+        </button>
+      </div>
+
+      <!-- Current Mocks Display -->
+      <div class="mocks-list" *ngIf="currentMocks().length > 0">
+        <h4>📋 Current Mocks ({{ currentMocks().length }})</h4>
+        <div class="mock-item" *ngFor="let mock of currentMocks()">
+          <div class="mock-header">
+            <span class="method-badge" [class]="'method-' + mock.method.toLowerCase()">
+              {{ mock.method }}
+            </span>
+            <span class="mock-name">{{ mock.name }}</span>
+            <button 
+              class="btn-delete" 
+              (click)="deleteMock(mock.id!)"
+              title="Delete Mock">
+              🗑️
+            </button>
+          </div>
+          <div class="mock-details">
+            <div class="mock-url">{{ mock.url }}</div>
+            <div class="mock-service">Service: {{ mock.serviceCode }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="empty-state" *ngIf="currentMocks().length === 0 && !isLoading()">
+        <span class="empty-icon">📝</span>
+        <p>No mocks loaded. Use a service code to load existing mocks.</p>
+      </div>
+    </div>
+
+    <!-- ========== TAB 2: MOCK ========== -->
+    <div class="tab-content" [class.active]="activeTab() === 2">
+      <div class="form-group">
+        <label for="nameMock">Mock Name:</label>
+        <input 
+          id="nameMock"
+          type="text" 
+          [(ngModel)]="nameMock"
+          placeholder="Enter mock name..."
+          class="form-input">
+      </div>
+
+      <div class="form-group">
+        <label for="serviceCodeMock">Service Code:</label>
+        <input 
+          id="serviceCodeMock"
+          type="text" 
+          [(ngModel)]="serviceCode"
+          placeholder="Enter service code..."
+          class="form-input">
+      </div>
+
+      <div class="form-group">
+        <label for="url">URL:</label>
+        <input 
+          id="url"
+          type="text" 
+          [(ngModel)]="url"
+          placeholder="Enter request URL..."
+          class="form-input">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group flex-1">
+          <label for="httpMethod">HTTP Method:</label>
+          <select id="httpMethod" [(ngModel)]="httpMethod" class="form-select">
+            <option *ngFor="let method of httpMethods" [value]="method">
+              {{ method }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group flex-1">
+          <label for="httpCode">HTTP Code:</label>
+          <select id="httpCode" [(ngModel)]="httpCodeResponseValue" class="form-select">
+            <option *ngFor="let code of httpCodeResponse" [value]="code">
+              {{ code }}
+            </option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="delay">Delay (ms):</label>
+        <input 
+          id="delay"
+          type="number" 
+          [value]="delayMs" 
+          (input)="onInputNumber($event, 'delayMs')"
+          min="0"
+          class="form-input">
+      </div>
+
+      <div class="form-actions">
+        <button 
+          class="btn btn-success" 
+          (click)="saveContext()"
+          [disabled]="!nameMock.trim() || !url.trim() || isLoading()">
+          {{ isLoading() ? 'Saving...' : 'Save Mock' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- ========== TAB 3: HEADERS ========== -->
+    <div class="tab-content" [class.active]="activeTab() === 3">
+      <!-- Add New Header -->
+      <div class="header-form">
+        <h4>➕ Add Header</h4>
+        <div class="form-row">
+          <input 
+            type="text" 
+            [(ngModel)]="newHeaderKey"
+            placeholder="Header key..."
+            class="form-input flex-1"
+            (keydown.enter)="addHeader()">
+          <input 
+            type="text" 
+            [(ngModel)]="newHeaderValue"
+            placeholder="Header value..."
+            class="form-input flex-1"
+            (keydown.enter)="addHeader()">
+          <button 
+            class="btn btn-primary" 
+            (click)="addHeader()"
+            [disabled]="!newHeaderKey().trim()">
+            Add
+          </button>
+        </div>
+      </div>
+
+      <!-- Current Headers -->
+      <div class="headers-list" *ngIf="getHeaderKeys().length > 0">
+        <h4>📋 Current Headers ({{ getHeaderKeys().length }})</h4>
+        <div class="header-item" *ngFor="let key of getHeaderKeys()">
+          <div class="header-content">
+            <span class="header-key">{{ key }}:</span>
+            <span class="header-value">{{ headers[key] }}</span>
+          </div>
+          <button 
+            class="btn-delete" 
+            (click)="removeHeader(key)"
+            title="Remove Header">
+            ❌
+          </button>
+        </div>
+      </div>
+
+      <div class="empty-state" *ngIf="getHeaderKeys().length === 0">
+        <span class="empty-icon">📋</span>
+        <p>No headers configured. Add headers to customize the HTTP response.</p>
+      </div>
+    </div>
+
+    <!-- ========== TAB 4: BODY ========== -->
+    <div class="tab-content" [class.active]="activeTab() === 4">
+      <div class="form-group">
+        <label for="responseBody">Response Body:</label>
+        <textarea 
+          id="responseBody"
+          [(ngModel)]="responseBody"
+          placeholder='{"message": "Mock response body..."}'
+          rows="12"
+          class="form-textarea">
+        </textarea>
+      </div>
+
+      <div class="form-actions">
+        <button 
+          class="btn btn-success" 
+          (click)="saveContext()"
+          [disabled]="isLoading()">
+          {{ isLoading() ? 'Saving...' : 'Save Body' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- ========== TAB 5: BACKUP ========== -->
+    <div class="tab-content" [class.active]="activeTab() === 5">
+      <div class="backup-section">
+        <h4>💾 Export Configuration</h4>
+        <p>Download the current mock configuration as JSON file.</p>
+        <button class="btn btn-primary" (click)="downloadConfig()">
+          📥 Download Config
+        </button>
+      </div>
+
+      <div class="backup-section">
+        <h4>📤 Export All Mocks</h4>
+        <p>Export all mocks for the current service code.</p>
+        <button 
+          class="btn btn-primary" 
+          (click)="exportMocks()"
+          [disabled]="!serviceCode.trim()">
+          📤 Export Mocks
+        </button>
+      </div>
+
+      <div class="backup-section">
+        <h4>📥 Import Configuration</h4>
+        <p>Load configuration from a JSON file.</p>
+        <input 
+          #fileInput
+          type="file" 
+          accept=".json"
+          (change)="onFileSelected($event)"
+          class="file-input">
+        <button 
+          class="btn btn-secondary" 
+          (click)="fileInput.click()">
+          📁 Select File
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+</div>

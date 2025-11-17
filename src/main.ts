@@ -2,7 +2,7 @@ import { bootstrapApplication } from '@angular/platform-browser';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { createCustomElement } from '@angular/elements';
 import { AppComponent } from './app/app.component';
-import { CustomElementComponent } from './app/custom-element/custom-element.component';
+import { CustomElementComponent } from './app/components/custom-element/custom-element.component';
 
 
 // Bootstrap zoneless de la aplicación principal usando standalone components

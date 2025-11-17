@@ -21,4 +21,23 @@
       message="Este componente está integrado directamente en la aplicación Angular">
     </app-custom-element>
   </div>
+
+  <div class="demo-section">
+    <h4>🌐 HTTP Mock Manager:</h4>
+    <p>Gestor visual flotante para configurar mocks HTTP con IndexedDB y Angular Signals.</p>
+    <p><strong>Características:</strong> Drag & Drop, 6 pestañas, Import/Export, Gestión completa de mocks.</p>
+  </div>
 </div>
+
+<!-- HTTP Mock Manager Component (Floating Interface) -->
+<http-mock-manager
+  [contextId]="1"
+  serviceCode="demo-service"
+  nameMock="Demo Mock"
+  url="https://api.example.com/users"
+  httpMethod="GET"
+  [delayMs]="1000"
+  responseBody='{"message": "Hello from HTTP Mock!"}'
+  (saveMockSchemaEvent)="onMockSchemaSaved($event)"
+  (contextTypeChangeEvent)="onContextChanged($event)">
+</http-mock-manager>
