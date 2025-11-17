@@ -83,6 +83,36 @@ $app-shadow: rgba(0, 0, 0, 0.1);
     }
   }
 
+  .demo-section {
+    margin-top: 30px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+
+    h4 {
+      color: $app-text-primary;
+      margin-bottom: 20px;
+      font-size: 1.2em;
+      font-weight: 500;
+    }
+
+    app-custom-element {
+      display: block;
+      margin: 15px 0;
+      
+      // Ajustar el componente dentro del container
+      ::ng-deep .custom-element {
+        background: linear-gradient(135deg, #ffffff 0%, #f0f4f8 100%);
+        border-color: rgba(255, 255, 255, 0.8);
+        
+        .header h3 {
+          color: #1976d2;
+        }
+      }
+    }
+  }
+
   // Responsive design
   @media (max-width: 768px) {
     padding: 20px;
@@ -94,6 +124,15 @@ $app-shadow: rgba(0, 0, 0, 0.1);
 
     p {
       font-size: 1em;
+    }
+
+    .demo-section {
+      padding: 15px;
+      margin-top: 20px;
+
+      h4 {
+        font-size: 1.1em;
+      }
     }
   }
 }

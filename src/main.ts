@@ -1,4 +1,5 @@
 import { bootstrapApplication } from '@angular/platform-browser';
+import { provideZonelessChangeDetection } from '@angular/core';
 import { createCustomElement } from '@angular/elements';
 import { AppComponent } from './app/app.component';
 import { CustomElementComponent } from './app/custom-element/custom-element.component';
@@ -7,11 +8,8 @@ import { CustomElementComponent } from './app/custom-element/custom-element.comp
 // Bootstrap zoneless de la aplicación principal usando standalone components
 bootstrapApplication(AppComponent, {
   providers: [
-    // Configuración para deshabilitar Zone.js
-    {
-      provide: 'ngZoneEventCoalescing',
-      useValue: false
-    }
+    // ⚡ Configuración Zoneless de Angular 20
+    provideZonelessChangeDetection()
   ]
 }).then((appRef) => {
   // Crear el custom element
