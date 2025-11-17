@@ -1,0 +1,212 @@
+// 🎯 CustomElementComponent Styles
+@use 'sass:color';
+
+// Variables del componente basadas en el sistema global
+$element-border-color: #1976d2;
+$element-background-start: #ffffff;
+$element-background-end: #f8f9fa;
+$element-text-primary: #333;
+$element-text-secondary: #666;
+$element-border-light: #e0e0e0;
+$element-info-background: #f0f4f8;
+
+// Colores específicos del botón
+$btn-primary-start: #1976d2;
+$btn-primary-end: #1565c0;
+$btn-hover-start: #1565c0;
+$btn-hover-end: #0d47a1;
+$btn-shadow-color: rgba(25, 118, 210, 0.3);
+$btn-shadow-hover: rgba(25, 118, 210, 0.4);
+
+// Colores del counter
+$counter-background-start: #e3f2fd;
+$counter-background-end: #bbdefb;
+$counter-border: #90caf9;
+
+.custom-element {
+  border: 2px solid var(--primary-color, #{$element-border-color});
+  border-radius: 8px;
+  margin: 10px;
+  padding: 15px;
+  background: linear-gradient(135deg, $element-background-start 0%, $element-background-end 100%);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  font-family: var(--font-family, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .header {
+    border-bottom: 1px solid $element-border-light;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+
+    h3 {
+      margin: 0;
+      color: var(--primary-color, #{$element-border-color});
+      font-size: 1.2em;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+  }
+
+  .content {
+    text-align: left;
+  }
+
+  .message {
+    color: $element-text-primary;
+    margin: 10px 0;
+    font-size: 1em;
+    line-height: 1.4;
+    font-weight: 400;
+  }
+
+  .info {
+    margin: 10px 0;
+    padding: 8px 0;
+
+    small {
+      color: $element-text-secondary;
+      font-style: italic;
+      font-size: 0.85em;
+      line-height: 1.4;
+    }
+  }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin: 15px 0;
+    flex-wrap: wrap;
+
+    @media (max-width: 480px) {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+    }
+  }
+
+  .btn {
+    background: linear-gradient(135deg, var(--primary-color, #{$btn-primary-start}), $btn-primary-end);
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px $btn-shadow-color;
+    font-family: inherit;
+    
+    &:hover {
+      background: linear-gradient(135deg, $btn-hover-start, $btn-hover-end);
+      box-shadow: 0 4px 8px $btn-shadow-hover;
+      transform: translateY(-1px);
+    }
+    
+    &:active {
+      transform: scale(0.98);
+    }
+
+    &:focus {
+      outline: 2px solid var(--primary-color, #{$element-border-color});
+      outline-offset: 2px;
+    }
+  }
+
+  .counter {
+    font-weight: bold;
+    color: var(--primary-color, #{$element-border-color});
+    padding: 6px 12px;
+    background: linear-gradient(135deg, $counter-background-start, $counter-background-end);
+    border-radius: 6px;
+    font-size: 0.9em;
+    border: 1px solid $counter-border;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+
+    &:before {
+      content: '🔢';
+      font-size: 0.8em;
+    }
+  }
+
+  .computed-info {
+    margin-top: 10px;
+    padding: 12px;
+    background: $element-info-background;
+    border-radius: 6px;
+    border-left: 4px solid var(--primary-color, #{$element-border-color});
+    position: relative;
+    
+    &:before {
+      content: '💡';
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      font-size: 0.9em;
+      opacity: 0.7;
+    }
+
+    small {
+      color: var(--primary-color, #{$element-border-color});
+      font-weight: 500;
+      font-size: 0.85em;
+      line-height: 1.4;
+      display: block;
+    }
+  }
+
+  // Estados de accesibilidad mejorados
+  &:focus-within {
+    outline: 2px solid var(--primary-color, #{$element-border-color});
+    outline-offset: 2px;
+  }
+
+  // Responsive adjustments
+  @media (max-width: 768px) {
+    margin: 5px;
+    padding: 12px;
+
+    .header h3 {
+      font-size: 1.1em;
+    }
+
+    .message {
+      font-size: 0.95em;
+    }
+
+    .btn {
+      padding: 8px 15px;
+      font-size: 0.85em;
+    }
+
+    .counter {
+      font-size: 0.85em;
+      padding: 5px 10px;
+    }
+  }
+
+  // Dark mode support (si se implementa más tarde)
+  @media (prefers-color-scheme: dark) {
+    background: linear-gradient(135deg, #2d2d2d 0%, #3d3d3d 100%);
+    border-color: color.adjust($element-border-color, $lightness: 20%);
+    
+    .message {
+      color: #e0e0e0;
+    }
+    
+    .info small {
+      color: #b0b0b0;
+    }
+  }
+}
