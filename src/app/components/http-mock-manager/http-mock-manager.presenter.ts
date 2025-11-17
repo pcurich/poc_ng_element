@@ -9,7 +9,9 @@ import {
   MockSchema, 
   MockBody,
   IHttpMockManagerPresenterState,
-  IHttpMockManagerPresenterEvents 
+  IHttpMockManagerPresenterEvents,
+  DatabaseConfig,
+  DatabaseStatus 
 } from '../interfaces';
 
 /**
@@ -39,6 +41,13 @@ export class HttpMockManagerPresenter implements OnDestroy {
   private readonly _statistics = signal<any | null>(null);
   private readonly _selectedServiceCode = signal<string | null>(null);
   private readonly _lastOperation = signal<string | null>(null);
+  
+  // === Estado de la base de datos ===
+  private readonly _databaseStatus = signal<DatabaseStatus>({
+    exists: false,
+    isInitialized: false
+  });
+  private readonly _databaseConfig = signal<DatabaseConfig | null>(null);
 
   // === Computed properties públicas ===
   public readonly isInitialized = this._isInitialized.asReadonly();
@@ -48,6 +57,16 @@ export class HttpMockManagerPresenter implements OnDestroy {
   public readonly statistics = this._statistics.asReadonly();
   public readonly selectedServiceCode = this._selectedServiceCode.asReadonly();
   public readonly lastOperation = this._lastOperation.asReadonly();
+  
+  // === Estado de la base de datos ===
+  public readonly databaseStatus = this._databaseStatus.asReadonly();
+  public readonly databaseConfig = this._databaseConfig.asReadonly();
+  
+  // === Computed para mostrar tabs o configuración ===
+  public readonly shouldShowDatabaseSetup = computed(() => !this._databaseStatus().exists);
+  public readonly shouldShowManagementTabs = computed(() => 
+    this._databaseStatus().exists && this._databaseStatus().isInitialized
+  );
 
   // === Estado combinado ===
   public readonly state = computed<IHttpMockManagerPresenterState>(() => ({
@@ -83,7 +102,7 @@ export class HttpMockManagerPresenter implements OnDestroy {
   // === Inicialización ===
 
   /**
-   * Inicializa el presenter y los servicios necesarios
+   * Inicializa el presenter y valida la existencia de la base de datos
    */
   async initialize(): Promise<void> {
     try {
@@ -91,19 +110,21 @@ export class HttpMockManagerPresenter implements OnDestroy {
       this.setError(null);
       this.setLastOperation('Initializing presenter...');
 
-      // Crear configuración y contexto de base de datos
-      const config = ORMFactory.getDefaultHttpMocksConfig();
-      const dbContext = ORMFactory.createDbContext(config);
-      await dbContext.open();
+      // Primero verificar si la base de datos existe
+      const dbStatus = await this.checkDatabaseExists();
+      this._databaseStatus.set(dbStatus);
+      
+      if (!dbStatus.exists) {
+        // Si no existe, cargar la configuración por defecto para mostrar el formulario
+        await this.loadDefaultDatabaseConfig();
+        this.setLastOperation('Database not found - setup required');
+        this._isInitialized.set(true);
+        return;
+      }
 
-      // Crear repository y servicio
-      this.httpMockRepository = ORMFactory.createHttpMockRepository(dbContext);
-      this.httpMockService = new HttpMockService();
-      await this.httpMockService.initialize(this.httpMockRepository);
-
-      // Suscribirse a cambios del servicio
-      this.subscribeToServiceChanges();
-
+      // Si existe, proceder con la inicialización normal
+      await this.initializeServices();
+      
       this._isInitialized.set(true);
       this.setLastOperation('Presenter initialized successfully');
       
@@ -443,6 +464,182 @@ export class HttpMockManagerPresenter implements OnDestroy {
       }
     } catch (error) {
       console.warn('Failed to refresh statistics:', error);
+    }
+  }
+
+  /**
+   * Verifica si la base de datos existe en IndexedDB
+   */
+  private async checkDatabaseExists(): Promise<DatabaseStatus> {
+    try {
+      const config = ORMFactory.getDefaultHttpMocksConfig();
+      
+      // Verificar si la base de datos existe sin crearla
+      const dbExists = await this.isDatabasePresent(config.name);
+      
+      if (!dbExists) {
+        return {
+          exists: false,
+          isInitialized: false
+        };
+      }
+
+      // Si existe, verificar que esté correctamente configurada
+      try {
+        const dbContext = ORMFactory.createDbContext(config);
+        await dbContext.open();
+        await dbContext.close();
+        
+        return {
+          exists: true,
+          isInitialized: true,
+          config: config
+        };
+      } catch (error) {
+        return {
+          exists: true,
+          isInitialized: false,
+          error: `Database exists but failed to initialize: ${error}`
+        };
+      }
+    } catch (error) {
+      return {
+        exists: false,
+        isInitialized: false,
+        error: `Error checking database: ${error}`
+      };
+    }
+  }
+
+  /**
+   * Verifica si una base de datos existe en IndexedDB sin intentar crearla
+   */
+  private async isDatabasePresent(dbName: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      if (!window.indexedDB) {
+        resolve(false);
+        return;
+      }
+
+      // Usar deleteDatabase para verificar existencia sin crear
+      const deleteRequest = indexedDB.deleteDatabase(dbName);
+      
+      deleteRequest.onerror = () => resolve(true); // Si falla borrar, existe
+      deleteRequest.onsuccess = () => resolve(false); // Si se borra, no existía
+      deleteRequest.onblocked = () => resolve(true); // Si está bloqueado, existe
+    });
+  }
+
+  /**
+   * Carga la configuración por defecto de la base de datos para el formulario
+   */
+  private async loadDefaultDatabaseConfig(): Promise<void> {
+    try {
+      const defaultConfig = ORMFactory.getDefaultHttpMocksConfig();
+      
+      const objectStore = defaultConfig.objectStores[0];
+      const databaseConfig: DatabaseConfig = {
+        name: defaultConfig.name,
+        version: defaultConfig.version,
+        objectStoreName: objectStore.name,
+        keyPath: (objectStore.options?.keyPath as string) || 'id',
+        indexes: objectStore.indexes?.map(index => ({
+          name: index.name,
+          keyPath: index.keyPath as string,
+          unique: index.options?.unique || false
+        })) || []
+      };
+      
+      this._databaseConfig.set(databaseConfig);
+      this.setLastOperation('Default database configuration loaded');
+      
+    } catch (error) {
+      this.setError(`Failed to load default database configuration: ${error}`);
+    }
+  }
+
+  /**
+   * Inicializa los servicios una vez que la base de datos existe
+   */
+  private async initializeServices(): Promise<void> {
+    try {
+      // Crear configuración y contexto de base de datos
+      const config = ORMFactory.getDefaultHttpMocksConfig();
+      const dbContext = ORMFactory.createDbContext(config);
+      await dbContext.open();
+
+      // Crear repository y servicio
+      this.httpMockRepository = ORMFactory.createHttpMockRepository(dbContext);
+      this.httpMockService = new HttpMockService();
+      await this.httpMockService.initialize(this.httpMockRepository);
+
+      // Suscribirse a cambios del servicio
+      this.subscribeToServiceChanges();
+      
+      // Actualizar estado de la base de datos
+      this._databaseStatus.update(status => ({
+        ...status,
+        isInitialized: true
+      }));
+
+      this.setLastOperation('Services initialized successfully');
+      
+    } catch (error) {
+      const errorMessage = `Failed to initialize services: ${error}`;
+      this.setError(errorMessage);
+      throw new Error(errorMessage);
+    }
+  }
+
+  /**
+   * Crea la base de datos con la configuración proporcionada
+   */
+  async handleCreateDatabase(config: DatabaseConfig): Promise<void> {
+    try {
+      this.setLoading(true);
+      this.setLastOperation('Creating database...');
+
+      // Convertir DatabaseConfig a IDbConfig
+      const dbConfig = {
+        name: config.name,
+        version: config.version,
+        objectStores: [
+          {
+            name: config.objectStoreName,
+            options: { keyPath: config.keyPath },
+            indexes: config.indexes.map(index => ({
+              name: index.name,
+              keyPath: index.keyPath,
+              options: { unique: index.unique }
+            }))
+          }
+        ]
+      };
+
+      // Crear la base de datos
+      const dbContext = ORMFactory.createDbContext(dbConfig);
+      await dbContext.open();
+      await dbContext.close();
+
+      // Actualizar estado
+      this._databaseStatus.set({
+        exists: true,
+        isInitialized: false,
+        config: dbConfig
+      });
+
+      // Inicializar servicios
+      await this.initializeServices();
+
+      this.setLastOperation('Database created successfully');
+      console.log('🗃️ Database created and initialized successfully');
+
+    } catch (error) {
+      const errorMessage = `Failed to create database: ${error}`;
+      this.setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      this.setLoading(false);
     }
   }
 

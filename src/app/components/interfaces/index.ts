@@ -10,3 +10,6 @@ export * from './http-mock-manager-component.interface';
 
 // HttpMockManager Presenter interfaces  
 export * from './http-mock-manager-presenter.interface';
+
+// Database Configuration interfaces
+export * from './database-config.interface';
