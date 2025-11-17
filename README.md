@@ -1,13 +1,15 @@
-# Angular Elements Project - POC (Standalone + Signals + Zoneless)
+# Angular Elements Project - POC (Angular 20 + Standalone + Signals + Zoneless)
 
-Este proyecto es una prueba de concepto (POC) para crear **Custom Elements** usando **Angular Elements** con las últimas características de Angular: **Standalone Components**, **Signals** y **configuración Zoneless**.
+Este proyecto es una prueba de concepto (POC) para crear **Custom Elements** usando **Angular Elements** con las últimas características de **Angular 20**: **Standalone Components**, **Signals**, **configuración Zoneless** y el **nuevo Application Builder**.
 
 ## 🎯 Objetivo
 
-Demostrar cómo crear componentes Angular modernos que pueden ser utilizados como Custom Elements (Web Components) en cualquier aplicación web, independientemente del framework utilizado, aprovechando las mejoras de performance y desarrollo de Angular 19.
+Demostrar cómo crear componentes Angular de última generación que pueden ser utilizados como Custom Elements (Web Components) en cualquier aplicación web, independientemente del framework utilizado, aprovechando todas las mejoras de performance y desarrollo de Angular 20.
 
 ## 🚀 Características
 
+- ✅ **Angular 20.3+**: Última versión estable con todas las mejoras
+- ✅ **Application Builder**: Nuevo sistema de build optimizado
 - ✅ **Standalone Components**: Sin NgModules, arquitectura moderna
 - ✅ **Angular Signals**: Reactividad mejorada sin Zone.js
 - ✅ **Zoneless Configuration**: Mejor performance y bundle más pequeño
@@ -16,12 +18,13 @@ Demostrar cómo crear componentes Angular modernos que pueden ser utilizados com
 - ✅ **Eventos personalizados**: Comunicación bidireccional
 - ✅ **Estilos encapsulados**: CSS aislado del resto de la aplicación
 - ✅ **Bundle optimizado**: Sin Zone.js = menos tamaño y mejor performance
+- ✅ **TypeScript 5.9+**: Últimas características del lenguaje
 
 ## 📋 Requisitos Previos
 
-- Node.js (v18 o superior)
-- npm (v9 o superior)
-- Angular CLI (v19 o superior)
+- Node.js (v22 o superior)
+- npm (v10 o superior)
+- Angular CLI (v20.3+ o superior)
 
 ## 🛠️ Instalación
 

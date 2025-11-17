@@ -1,8 +1,8 @@
-# 🚀 Angular Elements con Standalone Components, Signals y Zoneless
+# 🚀 Angular Elements con Angular 20 + Standalone Components, Signals y Zoneless
 
 ## ✨ Características Modernas Implementadas
 
-Este proyecto utiliza las **últimas características de Angular 19** para crear Custom Elements optimizados:
+Este proyecto utiliza las **últimas características de Angular 20.3+** para crear Custom Elements optimizados:
 
 ### 🏗️ Standalone Components
 - **Sin NgModules**: Arquitectura simplificada usando `standalone: true`
@@ -18,6 +18,12 @@ Este proyecto utiliza las **últimas características de Angular 19** para crear
 - **Sin Zone.js**: Eliminación completa de la librería de detección de cambios
 - **Bundle reducido**: ~30KB menos en el archivo final
 - **Performance mejorada**: Menos overhead en runtime
+
+### 🛠️ Application Builder (Angular 20+)
+- **Nuevo sistema de build**: Reemplaza el builder anterior con optimizaciones mejoradas
+- **ESBuild integrado**: Compilación más rápida y bundles optimizados
+- **Mejor tree-shaking**: Eliminación más efectiva de código no utilizado
+- **Salida simplificada**: Archivos organizados en `dist/browser/`
 
 ## 🔧 Implementación Técnica
 

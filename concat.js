@@ -6,15 +6,14 @@ const path = require('path');
  * y crear un único archivo que contenga el custom element
  */
 async function buildElements() {
-  const distPath = path.join(__dirname, 'dist');
-  const outputPath = path.join(distPath, 'elements');
+  const distPath = path.join(__dirname, 'dist', 'browser');
+  const outputPath = path.join(__dirname, 'dist', 'elements');
   
   // Crear directorio de salida si no existe
   await fs.ensureDir(outputPath);
   
-  // Archivos a concatenar (en orden)
+  // Archivos a concatenar (en orden) - Angular 20+ Application Builder
   const files = [
-    path.join(distPath, 'polyfills.js'),
     path.join(distPath, 'main.js')
   ];
   
