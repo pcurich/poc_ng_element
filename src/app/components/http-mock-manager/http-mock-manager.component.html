@@ -22,16 +22,98 @@
   <!-- Contenido principal -->
   <div class="content" [class.collapsed]="!showForm()">
     
-    <!-- Navegación de pestañas -->
-    <div class="tab-navigation">
-      <button 
-        class="tab-btn" 
-        *ngFor="let tab of ['Context', 'Load', 'Mock', 'Headers', 'Body', 'Backup']; let i = index"
-        [class.active]="activeTab() === i"
-        (click)="setActiveTab(i)">
-        {{ tab }}
-      </button>
+    <!-- Panel de configuración de base de datos (si no existe) -->
+    <div *ngIf="shouldShowDatabaseSetup()" class="database-setup-panel">
+      <div class="setup-header">
+        <h3>🗃️ Configuración de Base de Datos</h3>
+        <p>No se encontró una base de datos. Configure los parámetros para crear una nueva:</p>
+      </div>
+
+      <div class="form-group">
+        <label for="dbName">Nombre de la Base de Datos:</label>
+        <input 
+          id="dbName"
+          type="text" 
+          [(ngModel)]="dbName"
+          placeholder="HttpMocksDB (por defecto)"
+          class="form-input"
+          required>
+      </div>
+
+      <div class="form-group">
+        <label for="dbVersion">Versión:</label>
+        <input 
+          id="dbVersion"
+          type="number" 
+          [(ngModel)]="dbVersion"
+          min="1"
+          placeholder="1"
+          class="form-input">
+      </div>
+
+      <div class="form-group">
+        <label for="dbObjectStoreName">Nombre del Object Store:</label>
+        <input 
+          id="dbObjectStoreName"
+          type="text" 
+          [(ngModel)]="dbObjectStoreName"
+          placeholder="httpMocks (por defecto)"
+          class="form-input"
+          required>
+      </div>
+
+      <div class="form-group">
+        <label for="dbKeyPath">Key Path:</label>
+        <input 
+          id="dbKeyPath"
+          type="text" 
+          [(ngModel)]="dbKeyPath"
+          placeholder="id (por defecto)"
+          class="form-input"
+          required>
+      </div>
+
+      <div class="form-actions">
+        <button 
+          class="btn btn-secondary" 
+          (click)="loadDefaultDatabaseConfig()"
+          type="button">
+          📄 Cargar Configuración por Defecto
+        </button>
+        
+        <button 
+          class="btn btn-primary" 
+          (click)="createDatabase()"
+          [disabled]="!dbName || !dbObjectStoreName || !dbKeyPath || isLoading()"
+          type="button">
+          <span *ngIf="!isLoading()">🚀 Crear Base de Datos</span>
+          <span *ngIf="isLoading()">⏳ Creando...</span>
+        </button>
+      </div>
+
+      <!-- Estado de la operación -->
+      <div *ngIf="lastOperation()" class="status-info">
+        <span class="status-label">Estado:</span> {{ lastOperation() }}
+      </div>
+
+      <!-- Errores -->
+      <div *ngIf="presenterError()" class="error-message">
+        ❌ {{ presenterError() }}
+      </div>
     </div>
+
+    <!-- Tabs de gestión (si la base de datos existe) -->
+    <div *ngIf="shouldShowManagementTabs()">
+      <!-- Navegación de pestañas -->
+      <div class="tab-navigation">
+        <button 
+          class="tab-btn" 
+          *ngFor="let tab of ['Context', 'Load', 'Mock', 'Headers', 'Body', 'Backup']; let i = index"
+          [class.active]="activeTab() === i"
+          (click)="setActiveTab(i)">
+          {{ tab }}
+        </button>
+      </div>
 
     <!-- ========== TAB 0: CONTEXT ========== -->
     <div class="tab-content" [class.active]="activeTab() === 0">
@@ -319,6 +401,8 @@
         </button>
       </div>
     </div>
+    
+    </div> <!-- Cierre de management tabs -->
 
   </div>
 

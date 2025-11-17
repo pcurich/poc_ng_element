@@ -1,9 +1,10 @@
-import { Component, OnInit, Input, Output, EventEmitter, signal, computed, ViewEncapsulation, OnDestroy } from '@angular/core';
+import { Component, OnInit, Input, Output, EventEmitter, signal, computed, ViewEncapsulation, OnDestroy, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpMethod } from '../../../core/models/HttpMockEntity';
 import { HttpMockManagerPresenter } from './http-mock-manager.presenter';
-import { ContextOption, MockSchema, MockBody } from '../interfaces';
+import { ContextOption, MockSchema, MockBody, DatabaseConfig } from '../interfaces';
+import { ORMFactory } from '../../../core';
 
 /**
  * 🌐 HttpMockManagerComponent - Gestor visual para HTTP Mocks
@@ -42,12 +43,20 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   @Input() httpCodeResponseValue: number = 200;
   @Input() delayMs: number = 1000;
   @Input() responseBody: string = '{}';
+  
+  // === Propiedades para configuración de base de datos ===
+  // Valores por defecto basados en getDefaultHttpMocksConfig()
+  @Input() dbName: string = 'HttpMocksDB';
+  @Input() dbVersion: number = 1;
+  @Input() dbObjectStoreName: string = 'httpMocks';
+  @Input() dbKeyPath: string = 'id';
 
   // === Eventos de salida (equivalentes a @Event en Stencil) ===
   
   @Output() saveMockSchemaEvent = new EventEmitter<MockSchema>();
   @Output() saveMockBodyEvent = new EventEmitter<MockBody>();
   @Output() saveHeadersEvent = new EventEmitter<Record<string, string>>();
+  @Output() databaseCreatedEvent = new EventEmitter<void>();
   @Output() loadContextEvent = new EventEmitter<number>();
   @Output() deleteContextEvent = new EventEmitter<number>();
   @Output() contextTypeChangeEvent = new EventEmitter<ContextOption>();
@@ -82,6 +91,12 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   public statistics = computed(() => this.presenter.statistics());
   public presenterError = computed(() => this.presenter.error());
   public lastOperation = computed(() => this.presenter.lastOperation());
+  
+  // === Estado de la base de datos ===
+  public databaseStatus = computed(() => this.presenter.databaseStatus());
+  public databaseConfig = computed(() => this.presenter.databaseConfig());
+  public shouldShowDatabaseSetup = computed(() => this.presenter.shouldShowDatabaseSetup());
+  public shouldShowManagementTabs = computed(() => this.presenter.shouldShowManagementTabs());
 
   async ngOnInit() {
     // Inicializar selectedContext si no está definido
@@ -410,6 +425,55 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+  }
+
+  // === Gestión de configuración de base de datos ===
+
+  async createDatabase(): Promise<void> {
+    try {
+      // Obtener configuración por defecto para índices
+      const defaultConfig = ORMFactory.getDefaultHttpMocksConfig();
+      const defaultIndexes = defaultConfig.objectStores[0].indexes || [];
+      
+      const config: DatabaseConfig = {
+        name: this.dbName,
+        version: this.dbVersion,
+        objectStoreName: this.dbObjectStoreName,
+        keyPath: this.dbKeyPath,
+        indexes: defaultIndexes.map(index => ({
+          name: index.name,
+          keyPath: index.keyPath as string,
+          unique: index.options?.unique || false
+        }))
+      };
+
+      await this.presenter.handleCreateDatabase(config);
+      this.databaseCreatedEvent.emit();
+      
+      console.log('🗃️ Database created successfully from component');
+      console.log('📊 Indexes created:', config.indexes);
+    } catch (error) {
+      console.error('❌ Error creating database:', error);
+    }
+  }
+
+  loadDefaultDatabaseConfig(): void {
+    // Cargar configuración directamente desde getDefaultHttpMocksConfig
+    const defaultConfig = ORMFactory.getDefaultHttpMocksConfig();
+    const objectStore = defaultConfig.objectStores[0];
+    
+    this.dbName = defaultConfig.name;
+    this.dbVersion = defaultConfig.version;
+    this.dbObjectStoreName = objectStore.name;
+    this.dbKeyPath = (objectStore.options?.keyPath as string) || 'id';
+    
+    console.log('📄 Default database configuration loaded:', {
+      name: this.dbName,
+      version: this.dbVersion,
+      objectStoreName: this.dbObjectStoreName,
+      keyPath: this.dbKeyPath,
+      indexesCount: objectStore.indexes?.length || 0
+    });
   }
 
   // === Limpieza de recursos ===
