@@ -1,0 +1,139 @@
+/* ==========================================
+   🎨 Global SCSS Styles - Angular 20 Project
+   ========================================== */
+
+// 🎨 SCSS Variables
+$primary-color: #1976d2;
+$secondary-color: #424242;
+$accent-color: #ff4081;
+$background-color: #f5f5f5;
+$text-color: #333;
+$text-secondary: #666;
+$border-radius: 8px;
+$spacing-unit: 8px;
+$font-stack: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+// 🔧 SCSS Mixins
+@use 'sass:color';
+
+@mixin button-style($bg-color: $primary-color, $text-color: white) {
+  background-color: $bg-color;
+  color: $text-color;
+  border: none;
+  padding: $spacing-unit * 1.5 $spacing-unit * 3;
+  border-radius: $border-radius;
+  cursor: pointer;
+  font-family: $font-stack;
+  font-weight: 500;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background-color: color.adjust($bg-color, $lightness: -10%);
+    transform: translateY(-2px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+@mixin card-style {
+  background: white;
+  border-radius: $border-radius;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: $spacing-unit * 3;
+  margin: $spacing-unit * 2 0;
+}
+
+// 📱 Global Styles
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: $font-stack;
+  margin: 0;
+  padding: $spacing-unit * 2.5;
+  background-color: $background-color;
+  color: $text-color;
+  line-height: 1.6;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: $text-color;
+  margin-bottom: $spacing-unit * 2;
+  
+  &.center {
+    text-align: center;
+  }
+}
+
+h1 {
+  font-size: 2.5rem;
+  font-weight: 300;
+}
+
+p {
+  color: $text-secondary;
+  margin-bottom: $spacing-unit * 3;
+  
+  &.center {
+    text-align: center;
+  }
+}
+
+// 🎯 Custom Element Styles
+my-custom-element {
+  display: block;
+  margin: $spacing-unit * 1.25 0;
+  
+  // Nested styling for custom element content
+  .custom-element-card {
+    @include card-style;
+    
+    .title {
+      color: $primary-color;
+      margin-bottom: $spacing-unit * 2;
+    }
+    
+    .button-group {
+      display: flex;
+      gap: $spacing-unit * 1.5;
+      margin-top: $spacing-unit * 2;
+      
+      button {
+        @include button-style;
+        
+        &.secondary {
+          @include button-style($secondary-color);
+        }
+        
+        &.accent {
+          @include button-style($accent-color);
+        }
+      }
+    }
+  }
+}
+
+// 📊 Utility Classes
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+.mt-1 { margin-top: $spacing-unit; }
+.mt-2 { margin-top: $spacing-unit * 2; }
+.mt-3 { margin-top: $spacing-unit * 3; }
+
+.mb-1 { margin-bottom: $spacing-unit; }
+.mb-2 { margin-bottom: $spacing-unit * 2; }
+.mb-3 { margin-bottom: $spacing-unit * 3; }
+
+// 🌈 Theme Support
+:root {
+  --primary-color: #{$primary-color};
+  --secondary-color: #{$secondary-color};
+  --accent-color: #{$accent-color};
+  --background-color: #{$background-color};
+  --text-color: #{$text-color};
+}

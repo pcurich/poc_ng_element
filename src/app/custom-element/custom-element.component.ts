@@ -27,7 +27,7 @@ import { Component, Input, OnInit, OnChanges, SimpleChanges, signal, computed, e
   `,
   styles: [`
     .custom-element {
-      border: 2px solid #1976d2;
+      border: 2px solid var(--primary-color, #1976d2);
       border-radius: 8px;
       margin: 10px;
       padding: 15px;
@@ -49,7 +49,7 @@ import { Component, Input, OnInit, OnChanges, SimpleChanges, signal, computed, e
     
     .header h3 {
       margin: 0;
-      color: #1976d2;
+      color: var(--primary-color, #1976d2);
       font-size: 1.2em;
     }
     
@@ -81,7 +81,7 @@ import { Component, Input, OnInit, OnChanges, SimpleChanges, signal, computed, e
     }
     
     .btn {
-      background: linear-gradient(135deg, #1976d2, #1565c0);
+      background: linear-gradient(135deg, var(--primary-color, #1976d2), #1565c0);
       color: white;
       border: none;
       padding: 10px 18px;
@@ -105,7 +105,7 @@ import { Component, Input, OnInit, OnChanges, SimpleChanges, signal, computed, e
     
     .counter {
       font-weight: bold;
-      color: #1976d2;
+      color: var(--primary-color, #1976d2);
       padding: 6px 12px;
       background: linear-gradient(135deg, #e3f2fd, #bbdefb);
       border-radius: 6px;
@@ -118,11 +118,11 @@ import { Component, Input, OnInit, OnChanges, SimpleChanges, signal, computed, e
       padding: 8px;
       background: #f0f4f8;
       border-radius: 4px;
-      border-left: 3px solid #1976d2;
+      border-left: 3px solid var(--primary-color, #1976d2);
     }
     
     .computed-info small {
-      color: #1976d2;
+      color: var(--primary-color, #1976d2);
       font-weight: 500;
     }
   `]

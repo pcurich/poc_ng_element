@@ -73,7 +73,7 @@ poc_ng_element/
 │   │   └── app.component.ts          # Componente principal de la app
 │   ├── main.ts                      # Configuración de Angular Elements
 │   ├── index.html                   # HTML principal con ejemplos
-│   └── styles.css                   # Estilos globales
+│   └── styles.scss                  # Estilos globales SCSS
 ├── dist/
 │   └── elements/
 │       ├── my-custom-element.js     # Custom element compilado
@@ -156,6 +156,14 @@ document.body.appendChild(element);
 - Contador de clicks
 - Eventos personalizados
 - Actualización reactiva de la UI
+
+### 🎨 Estilos SCSS
+- **Variables SCSS**: Tema consistente con variables reutilizables
+- **Mixins**: Componentes de estilo reutilizables
+- **Variables CSS**: Acceso runtime para theming dinámico
+- **Funciones modernas**: Usando `sass:color` para manipulación de colores
+
+Ver la [Guía completa de SCSS](./SCSS_GUIDE.md) para más detalles.
 
 ### Estilos
 - Diseño moderno y responsivo
