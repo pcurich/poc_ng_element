@@ -1,5 +1,5 @@
 import { Component, Input, OnInit, OnChanges, OnDestroy, SimpleChanges, signal, computed, effect } from '@angular/core';
-import { ORMFactory, Task, TaskStatus, ITaskData, TaskService } from '../../core/index';
+import { ORMFactory, Task, TaskStatus, ITaskData, TaskService } from '../../../core/index';
 
 @Component({
   selector: 'app-custom-element',

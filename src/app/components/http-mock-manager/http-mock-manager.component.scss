@@ -1,0 +1,243 @@
+/* 🌐 HTTP Mock Manager - Estilos optimizados */
+
+:host {
+  --primary: #007bff;
+  --success: #28a745;
+  --danger: #dc3545;
+  --radius: 8px;
+  --shadow: 0 4px 12px rgba(0,0,0,0.15);
+  --transition: all 0.3s ease;
+}
+
+.http-mock-manager {
+  position: fixed;
+  width: 400px;
+  max-height: 90vh;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #ddd;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  font-size: 14px;
+  z-index: 10000;
+  transition: var(--transition);
+  overflow: hidden;
+
+  &.hidden { height: 60px; }
+  &.visible { min-height: 500px; }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: var(--primary);
+    color: white;
+    cursor: move;
+    user-select: none;
+
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+    }
+
+    .control-btn {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      cursor: pointer;
+      
+      &:hover { background: rgba(255,255,255,0.3); }
+    }
+  }
+
+  .content {
+    max-height: calc(90vh - 60px);
+    overflow-y: auto;
+    &.collapsed { display: none; }
+  }
+
+  .tab-navigation {
+    display: flex;
+    border-bottom: 1px solid #ddd;
+    .tab-btn {
+      flex: 1;
+      padding: 12px 8px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 12px;
+      color: #666;
+      &:hover { background: #f8f9fa; }
+      &.active { background: var(--primary); color: white; }
+    }
+  }
+
+  .tab-content {
+    display: none;
+    padding: 20px;
+    &.active { display: block; }
+  }
+
+  .form-group {
+    margin-bottom: 16px;
+    &.flex-1 { flex: 1; }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 500;
+      font-size: 12px;
+    }
+  }
+
+  .form-row {
+    display: flex;
+    gap: 12px;
+  }
+
+  .form-input, .form-select, .form-textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: var(--radius);
+    &:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+  }
+
+  .form-textarea {
+    min-height: 120px;
+    font-family: monospace;
+  }
+
+  .form-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 20px;
+  }
+
+  .btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 13px;
+    &:disabled { opacity: 0.5; }
+    &.btn-primary { background: var(--primary); color: white; }
+    &.btn-success { background: var(--success); color: white; }
+    &.btn-secondary { background: #6c757d; color: white; }
+  }
+
+  .btn-delete {
+    background: transparent;
+    border: none;
+    color: var(--danger);
+    padding: 4px;
+    cursor: pointer;
+  }
+
+  .statistics {
+    margin-top: 20px;
+    padding: 16px;
+    background: #f8f9fa;
+    border-radius: var(--radius);
+    h4 { margin: 0 0 12px 0; font-size: 14px; }
+    .stat-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      .stat-label { color: #666; font-size: 12px; }
+      .stat-value { color: var(--primary); font-weight: 600; }
+    }
+  }
+
+  .mocks-list {
+    h4 { margin: 0 0 12px 0; font-size: 14px; }
+    .mock-item {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: var(--radius);
+      margin-bottom: 12px;
+      .mock-header {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px;
+        background: #f8f9fa;
+        .method-badge {
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-size: 11px;
+          font-weight: 600;
+          color: white;
+          &.method-get { background: var(--success); }
+          &.method-post { background: var(--primary); }
+          &.method-delete { background: var(--danger); }
+        }
+        .mock-name {
+          flex: 1;
+          margin-left: 12px;
+          font-weight: 500;
+        }
+      }
+      .mock-details {
+        padding: 12px;
+        .mock-url {
+          font-family: monospace;
+          font-size: 12px;
+          color: #666;
+        }
+        .mock-service {
+          font-size: 11px;
+          color: #999;
+        }
+      }
+    }
+  }
+
+  .header-form {
+    margin-bottom: 20px;
+    padding: 16px;
+    background: rgba(0,123,255,0.05);
+    border-radius: var(--radius);
+    h4 { margin: 0 0 12px 0; color: var(--primary); }
+  }
+
+  .headers-list .header-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: var(--radius);
+    margin-bottom: 8px;
+    .header-content {
+      .header-key { font-weight: 600; color: var(--primary); }
+      .header-value { color: #666; font-family: monospace; }
+    }
+  }
+
+  .backup-section {
+    margin-bottom: 24px;
+    padding: 16px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: var(--radius);
+    h4 { margin: 0 0 8px 0; font-size: 14px; }
+    p { margin: 0 0 12px 0; color: #666; font-size: 12px; }
+    .file-input { display: none; }
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #999;
+    .empty-icon { font-size: 48px; display: block; margin-bottom: 12px; }
+    p { margin: 0; font-size: 13px; }
+  }
+}
