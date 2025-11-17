@@ -20,7 +20,7 @@ Este proyecto ha sido configurado para usar **SCSS** en lugar de CSS, proporcion
 
 ### 📁 Estructura de Archivos
 
-```
+```scss
 src/
 ├── styles.scss          # ✅ Estilos globales SCSS
 ├── app/
@@ -32,6 +32,7 @@ src/
 ## 🎨 Características SCSS Implementadas
 
 ### 🔢 Variables SCSS
+
 ```scss
 // Colores del tema
 $primary-color: #1976d2;
@@ -46,6 +47,7 @@ $font-stack: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 ```
 
 ### 🧩 Mixins Reutilizables
+
 ```scss
 // Mixin para botones
 @mixin button-style($bg-color: $primary-color, $text-color: white) {
@@ -74,6 +76,7 @@ $font-stack: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 ```
 
 ### 🎯 Anidamiento y Estilos Estructurados
+
 ```scss
 my-custom-element {
   display: block;
@@ -104,6 +107,7 @@ my-custom-element {
 ```
 
 ### 🌈 Variables CSS para Custom Elements
+
 ```scss
 // Exposición de variables SCSS como variables CSS
 :root {
@@ -118,6 +122,7 @@ my-custom-element {
 ## 🔄 Integración con Componentes
 
 ### En Componentes Standalone
+
 Los componentes pueden usar las variables CSS expuestas:
 
 ```typescript
@@ -156,6 +161,7 @@ Los componentes pueden usar las variables CSS expuestas:
 ## 🛠️ Uso en Desarrollo
 
 ### Crear Nuevos Componentes con SCSS
+
 ```bash
 # Los componentes nuevos usarán SCSS automáticamente
 ng generate component mi-nuevo-componente
@@ -165,6 +171,7 @@ ng generate component mi-nuevo-componente
 ```
 
 ### Variables Disponibles Globalmente
+
 Todas las variables SCSS están disponibles en cualquier archivo `.scss`:
 
 ```scss
@@ -190,6 +197,7 @@ Todas las variables SCSS están disponibles en cualquier archivo `.scss`:
 ## 🚀 Optimizaciones Implementadas
 
 ### 1. **Funciones SCSS Modernas**
+
 ```scss
 @use 'sass:color';
 
@@ -201,6 +209,7 @@ background-color: color.adjust($color, $lightness: -10%);
 ```
 
 ### 2. **Variables CSS Híbridas**
+
 ```scss
 // Beneficia de ambos mundos:
 // - Cálculos SCSS en tiempo de compilación
@@ -213,6 +222,7 @@ background-color: color.adjust($color, $lightness: -10%);
 ```
 
 ### 3. **Tree-shaking Optimizado**
+
 - Solo se incluyen los estilos SCSS utilizados
 - Variables no utilizadas se eliminan automáticamente
 - Mixins unused no se incluyen en el bundle final
@@ -241,7 +251,8 @@ npm run build:elements
 
 **🎉 ¡SCSS configurado y listo para desarrollo avanzado!**
 
-### Próximos pasos recomendados:
+### Próximos pasos recomendados
+
 1. **Theming**: Implementar múltiples temas usando variables CSS
 2. **Responsive**: Crear mixins para breakpoints
 3. **Animation**: Mixins para animaciones complejas

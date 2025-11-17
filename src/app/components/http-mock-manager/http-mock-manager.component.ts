@@ -1,10 +1,9 @@
 import { Component, OnInit, Input, Output, EventEmitter, signal, computed, ViewEncapsulation, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpMockEntity, HttpMethod, IHttpMockData } from '../../../core/models/HttpMockEntity';
-import { HttpMockService, IHttpMockServiceState, IHttpInterceptionConfig } from '../../../core/services/HttpMockService';
-import { HttpMockRepository } from '../../../core/repositories/HttpMockRepository';
-import { ORMFactory } from '../../../core';
+import { HttpMethod } from '../../../core/models/HttpMockEntity';
+import { HttpMockManagerPresenter } from './http-mock-manager.presenter';
+import { ContextOption, MockSchema, MockBody } from '../interfaces';
 
 /**
  * 🌐 HttpMockManagerComponent - Gestor visual para HTTP Mocks
@@ -13,27 +12,6 @@ import { ORMFactory } from '../../../core';
  * mocks HTTP, basado en el diseño de Stencil pero adaptado para Angular 20
  * con Signals y funcionalidad de custom element.
  */
-
-// Interfaces para la configuración
-export interface ContextOption {
-  id: number;
-  value: string;
-  useMock: boolean;
-}
-
-export interface MockSchema {
-  nameMock: string;
-  url: string;
-  httpMethod: HttpMethod;
-  httpCodeResponseValue: number;
-  serviceCode: string;
-  delayMs: number;
-  headers?: Record<string, string>;
-}
-
-export interface MockBody {
-  responseBody: string;
-}
 
 @Component({
   selector: 'http-mock-manager',
@@ -92,20 +70,18 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   private dragging = false;
   private dragStart = { x: 0, y: 0, bottom: 32, right: 32 };
 
-  // === Referencias a elementos ===
-  
-  private fileInput?: HTMLInputElement;
 
-  // === Servicios ===
+  // === Presenter (Capa de presentación) ===
   
-  private httpMockService!: HttpMockService;
-  private httpMockRepository!: HttpMockRepository;
+  private presenter: HttpMockManagerPresenter = new HttpMockManagerPresenter();
 
-  // === Computed properties ===
+  // === Computed properties usando el presenter ===
   
-  public currentMocks = computed(() => this.httpMockService?.mocks() || []);
-  public isLoading = computed(() => this.httpMockService?.loading() || false);
-  public statistics = computed(() => this.httpMockService?.statistics() || null);
+  public currentMocks = computed(() => this.presenter.currentMocks());
+  public isLoading = computed(() => this.presenter.isLoading());
+  public statistics = computed(() => this.presenter.statistics());
+  public presenterError = computed(() => this.presenter.error());
+  public lastOperation = computed(() => this.presenter.lastOperation());
 
   async ngOnInit() {
     // Inicializar selectedContext si no está definido
@@ -114,26 +90,39 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     // Inicializar copia editable de contextOptions
     this.contextOptionsState.set([...this.contextOptions]);
 
-    // Inicializar el servicio HTTP Mock
-    await this.initializeHttpMockService();
+    // Inicializar el presenter
+    await this.initializePresenter();
+    
+    // Suscribirse a eventos del presenter
+    this.subscribeToPresenterEvents();
   }
 
-  private async initializeHttpMockService(): Promise<void> {
+  private async initializePresenter(): Promise<void> {
     try {
-      // Crear configuración y contexto de base de datos
-      const config = ORMFactory.getDefaultHttpMocksConfig();
-      const dbContext = ORMFactory.createDbContext(config);
-      await dbContext.open();
-
-      // Crear repository y servicio
-      this.httpMockRepository = ORMFactory.createHttpMockRepository(dbContext);
-      this.httpMockService = new HttpMockService();
-      await this.httpMockService.initialize(this.httpMockRepository);
-
-      console.log('🌐 HttpMockService initialized successfully');
+      await this.presenter.initialize();
+      console.log('🎭 HttpMockManagerPresenter initialized successfully');
     } catch (error) {
-      console.error('Failed to initialize HttpMockService:', error);
+      console.error('Failed to initialize HttpMockManagerPresenter:', error);
     }
+  }
+
+  private subscribeToPresenterEvents(): void {
+    // Suscribirse a eventos del presenter para propagar al exterior
+    this.presenter.events.onMockCreated.subscribe(mock => {
+      console.log('🎭 Presenter: Mock created', mock);
+    });
+
+    this.presenter.events.onMockDeleted.subscribe(mockId => {
+      console.log('🎭 Presenter: Mock deleted', mockId);
+    });
+
+    this.presenter.events.onMocksLoaded.subscribe(mocks => {
+      console.log('� Presenter: Mocks loaded', mocks);
+    });
+
+    this.presenter.events.onError.subscribe(error => {
+      console.error('🎭 Presenter Error:', error);
+    });
   }
 
   // === Métodos de drag & drop ===
@@ -170,21 +159,29 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     document.removeEventListener('mouseup', this.stopDrag);
   };
 
-  // === Métodos de gestión de contexto ===
+  // === Métodos de gestión de contexto usando presenter ===
 
   onContextTypeChange(selectedId: string): void {
     const id = Number(selectedId);
     const selectedOption = this.contextOptionsState().find(o => o.id === id);
     
     if (selectedOption) {
-      localStorage.setItem('useMock', JSON.stringify(selectedOption.useMock));
       this.selectedContext = selectedOption;
+      
+      // Usar presenter para manejar el cambio de contexto
+      this.presenter.handleContextTypeChange(selectedOption);
+      
+      // Emitir eventos para compatibilidad
       this.contextTypeChangeEvent.emit(selectedOption);
       this.reloadEvent.emit();
     }
   }
 
   loadContextById(): void {
+    // Usar presenter para cargar contexto
+    this.presenter.handleLoadContext(this.contextId);
+    
+    // Emitir evento para compatibilidad
     this.loadContextEvent.emit(this.contextId);
   }
 
@@ -266,7 +263,7 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     }
   }
 
-  // === Métodos de guardado ===
+  // === Métodos de guardado usando presenter ===
 
   async saveContext(): Promise<void> {
     const currentTab = this.activeTab();
@@ -280,32 +277,23 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
 
   private async saveMockSchema(): Promise<void> {
     try {
-      const mockData: Omit<IHttpMockData, 'id'> = {
-        name: this.nameMock,
-        serviceCode: this.serviceCode,
+      const schema: MockSchema = {
+        nameMock: this.nameMock,
         url: this.url,
-        method: this.httpMethod,
+        httpMethod: this.httpMethod,
         httpCodeResponseValue: this.httpCodeResponseValue,
+        serviceCode: this.serviceCode,
         delayMs: this.delayMs,
         headers: Object.keys(this.headers).length > 0 ? this.headers : undefined,
-        responseBody: this.responseBody
       };
 
-      const createdMock = await this.httpMockService.createMock(mockData);
+      // Usar presenter para crear el mock
+      const createdMock = await this.presenter.handleSaveMockSchema(schema);
       
       if (createdMock) {
         console.log('✅ Mock HTTP creado exitosamente:', createdMock);
         
         // Emitir evento para compatibilidad
-        const schema: MockSchema = {
-          nameMock: this.nameMock,
-          url: this.url,
-          httpMethod: this.httpMethod,
-          httpCodeResponseValue: this.httpCodeResponseValue,
-          serviceCode: this.serviceCode,
-          delayMs: this.delayMs,
-          headers: Object.keys(this.headers).length > 0 ? this.headers : undefined,
-        };
         this.saveMockSchemaEvent.emit(schema);
         
         // Limpiar formulario después de guardar exitosamente
@@ -325,6 +313,10 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
         bodyPayload = { responseBody: this.responseBody };
       }
       
+      // Usar presenter para guardar el body
+      await this.presenter.handleSaveMockBody(bodyPayload);
+      
+      // Emitir evento para compatibilidad
       this.saveMockBodyEvent.emit(bodyPayload);
       console.log('✅ Mock body guardado exitosamente');
     } catch (error) {
@@ -345,9 +337,9 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     this.newHeaderValue.set('');
   }
 
-  // === Métodos de gestión de headers ===
+  // === Métodos de gestión de headers usando presenter ===
 
-  addHeader(event?: MouseEvent): void {
+  addHeader(): void {
     const key = this.newHeaderKey().trim();
     const value = this.newHeaderValue();
     
@@ -369,6 +361,10 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   }
 
   private emitSaveHeaders(): void {
+    // Usar presenter para guardar headers
+    this.presenter.handleSaveHeaders(this.headers);
+    
+    // Emitir evento para compatibilidad
     this.saveHeadersEvent.emit(this.headers);
   }
 
@@ -391,38 +387,29 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     this.activeTab.set(tabIndex);
   }
 
-  // === Métodos de integración con HttpMockService ===
+  // === Métodos de integración usando presenter ===
 
   async loadMocksByServiceCode(serviceCode: string): Promise<void> {
-    if (this.httpMockService) {
-      await this.httpMockService.loadMocksByServiceCode(serviceCode);
-    }
+    await this.presenter.handleLoadMocksByServiceCode(serviceCode);
   }
 
   async deleteMock(mockId: string): Promise<void> {
-    if (this.httpMockService) {
-      const success = await this.httpMockService.deleteMock(mockId);
-      if (success) {
-        console.log('🗑️ Mock eliminado exitosamente');
-      }
-    }
+    await this.presenter.handleDeleteMock(mockId);
   }
 
   async exportMocks(): Promise<void> {
-    if (this.httpMockService) {
-      const mocks = await this.httpMockService.exportMocks(this.serviceCode);
-      
-      const json = JSON.stringify(mocks, null, 2);
-      const blob = new Blob([json], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `mocks-${this.serviceCode || 'all'}-${Date.now()}.json`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    }
+    const mocks = await this.presenter.handleExportMocks(this.serviceCode);
+    
+    const json = JSON.stringify(mocks, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `mocks-${this.serviceCode || 'all'}-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   }
 
   // === Limpieza de recursos ===
@@ -430,5 +417,8 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     document.removeEventListener('mousemove', this.onDrag);
     document.removeEventListener('mouseup', this.stopDrag);
+    
+    // Limpiar presenter
+    this.presenter.ngOnDestroy();
   }
 }
