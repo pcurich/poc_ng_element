@@ -1,0 +1,138 @@
+// 🎨 AppComponent Styles
+@use 'sass:color';
+
+// Variables locales del componente
+$app-primary-gradient-start: #667eea;
+$app-primary-gradient-end: #764ba2;
+$app-background-overlay: rgba(255, 255, 255, 0.1);
+$app-text-primary: white;
+$app-text-secondary: rgba(255, 255, 255, 0.9);
+$app-shadow: rgba(0, 0, 0, 0.1);
+
+.app-container {
+  text-align: center;
+  padding: 30px;
+  background: linear-gradient(135deg, $app-primary-gradient-start 0%, $app-primary-gradient-end 100%);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px $app-shadow;
+  margin: 20px auto;
+  max-width: 700px;
+  color: $app-text-primary;
+
+  h2 {
+    color: $app-text-primary;
+    margin-bottom: 15px;
+    font-size: 1.8em;
+    font-weight: 300;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  p {
+    color: $app-text-secondary;
+    margin-bottom: 20px;
+    font-size: 1.1em;
+    line-height: 1.6;
+  }
+
+  .features {
+    background: $app-background-overlay;
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 20px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+
+    h3 {
+      color: $app-text-primary;
+      margin-bottom: 15px;
+      font-size: 1.3em;
+      font-weight: 500;
+    }
+
+    ul {
+      text-align: left;
+      display: inline-block;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    li {
+      color: $app-text-secondary;
+      margin: 8px 0;
+      font-size: 0.95em;
+      position: relative;
+      padding-left: 20px;
+
+      &:before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 6px;
+        height: 6px;
+        background: $app-text-primary;
+        border-radius: 50%;
+      }
+
+      &:hover {
+        color: $app-text-primary;
+        transition: color 0.3s ease;
+      }
+    }
+  }
+
+  .demo-section {
+    margin-top: 30px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+
+    h4 {
+      color: $app-text-primary;
+      margin-bottom: 20px;
+      font-size: 1.2em;
+      font-weight: 500;
+    }
+
+    app-custom-element {
+      display: block;
+      margin: 15px 0;
+      
+      // Ajustar el componente dentro del container
+      ::ng-deep .custom-element {
+        background: linear-gradient(135deg, #ffffff 0%, #f0f4f8 100%);
+        border-color: rgba(255, 255, 255, 0.8);
+        
+        .header h3 {
+          color: #1976d2;
+        }
+      }
+    }
+  }
+
+  // Responsive design
+  @media (max-width: 768px) {
+    padding: 20px;
+    margin: 10px;
+
+    h2 {
+      font-size: 1.5em;
+    }
+
+    p {
+      font-size: 1em;
+    }
+
+    .demo-section {
+      padding: 15px;
+      margin-top: 20px;
+
+      h4 {
+        font-size: 1.1em;
+      }
+    }
+  }
+}

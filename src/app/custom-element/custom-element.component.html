@@ -1,0 +1,20 @@
+<div class="custom-element">
+  <div class="header">
+    <h3>👋 Hola, {{ name }}!</h3>
+  </div>
+  <div class="content">
+    <p class="message">{{ message }}</p>
+    <div class="info">
+      <small>Creado con Angular Elements v{{ angularVersion() }} 🚀</small>
+      <br>
+      <small>Usando Signals y sin Zone.js</small>
+    </div>
+    <div class="actions">
+      <button (click)="onClick()" class="btn">Hacer click</button>
+      <span class="counter">Clicks: {{ clickCount() }}</span>
+    </div>
+    <div class="computed-info">
+      <small>{{ displayInfo() }}</small>
+    </div>
+  </div>
+</div>
