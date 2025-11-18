@@ -1,8 +1,8 @@
 import { Injectable, signal, computed, OnDestroy, effect } from '@angular/core';
-import { Subject, takeUntil, BehaviorSubject, Observable, from } from 'rxjs';
-import { HttpMockService, IHttpMockServiceState, IHttpInterceptionConfig } from '../../../core/services/HttpMockService';
+import { Subject, BehaviorSubject } from 'rxjs';
+import { HttpMockService } from '../../../core/services/HttpMockService';
 import { HttpMockRepository } from '../../../core/repositories/HttpMockRepository';
-import { HttpMockEntity, HttpMethod, IHttpMockData } from '../../../core/models/HttpMockEntity';
+import { HttpMockEntity, IHttpMockData } from '../../../core/models/HttpMockEntity';
 import { ORMFactory } from '../../../core';
 import { 
   ContextOption, 
@@ -115,8 +115,8 @@ export class HttpMockManagerPresenter implements OnDestroy {
       this._databaseStatus.set(dbStatus);
       
       if (!dbStatus.exists) {
-        // Si no existe, cargar la configuración por defecto para mostrar el formulario
-        await this.loadDefaultDatabaseConfig();
+        // Si no existe, mostrar el formulario limpio (el usuario puede cargar config por defecto manualmente)
+        // await this.loadDefaultDatabaseConfig(); // Comentado: ahora es manual
         this.setLastOperation('Database not found - setup required');
         this._isInitialized.set(true);
         return;
@@ -471,6 +471,7 @@ export class HttpMockManagerPresenter implements OnDestroy {
    * Verifica si la base de datos existe en IndexedDB
    */
   private async checkDatabaseExists(): Promise<DatabaseStatus> {
+    debugger;
     try {
       const config = ORMFactory.getDefaultHttpMocksConfig();
       
@@ -512,22 +513,81 @@ export class HttpMockManagerPresenter implements OnDestroy {
   }
 
   /**
-   * Verifica si una base de datos existe en IndexedDB sin intentar crearla
+   * Verifica si una base de datos existe en IndexedDB sin crearla
+   * Utiliza la API databases() para consultar sin crear accidentalmente una DB vacía
    */
   private async isDatabasePresent(dbName: string): Promise<boolean> {
-    return new Promise((resolve) => {
+    try {
       if (!window.indexedDB) {
-        resolve(false);
-        return;
+        return false;
       }
 
-      // Usar deleteDatabase para verificar existencia sin crear
-      const deleteRequest = indexedDB.deleteDatabase(dbName);
-      
-      deleteRequest.onerror = () => resolve(true); // Si falla borrar, existe
-      deleteRequest.onsuccess = () => resolve(false); // Si se borra, no existía
-      deleteRequest.onblocked = () => resolve(true); // Si está bloqueado, existe
-    });
+      // Usar la API databases() si está disponible (navegadores modernos)
+      if (typeof indexedDB.databases === 'function') {
+        const databases = await indexedDB.databases();
+        const targetDb = databases.find(db => db.name === dbName);
+        
+        if (!targetDb) {
+          return false;
+        }
+
+        // Verificar que la DB tenga object stores (no esté vacía)
+        return new Promise((resolve) => {
+          const openRequest = indexedDB.open(dbName, targetDb.version);
+          
+          openRequest.onerror = () => resolve(false);
+          
+          openRequest.onsuccess = (event) => {
+            const db = (event.target as IDBOpenDBRequest).result;
+            try {
+              const hasObjectStores = db.objectStoreNames.length > 0;
+              db.close();
+              resolve(hasObjectStores);
+            } catch (error) {
+              db.close();
+              resolve(false);
+            }
+          };
+
+          // Si se dispara onupgradeneeded, no debería pasar con versión específica
+          openRequest.onupgradeneeded = () => {
+            const db = openRequest.result;
+            db.close();
+            resolve(false);
+          };
+        });
+      }
+
+      // Fallback para navegadores que no soportan databases()
+      // Este método puede crear una DB vacía, pero es necesario como fallback
+      return new Promise((resolve) => {
+        const openRequest = indexedDB.open(dbName);
+        
+        openRequest.onerror = () => resolve(false);
+        
+        openRequest.onsuccess = (event) => {
+          const db = (event.target as IDBOpenDBRequest).result;
+          try {
+            const hasObjectStores = db.objectStoreNames.length > 0;
+            db.close();
+            resolve(hasObjectStores);
+          } catch (error) {
+            db.close();
+            resolve(false);
+          }
+        };
+        
+        openRequest.onupgradeneeded = () => {
+          // DB no existía, se está creando - la cerramos inmediatamente
+          const db = openRequest.result;
+          db.close();
+          resolve(false);
+        };
+      });
+    } catch (error) {
+      console.error('Error checking database presence:', error);
+      return false;
+    }
   }
 
   /**

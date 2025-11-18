@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpMethod } from '../../../core/models/HttpMockEntity';
 import { HttpMockManagerPresenter } from './http-mock-manager.presenter';
-import { ContextOption, MockSchema, MockBody, DatabaseConfig } from '../interfaces';
+import { ContextOption, MockSchema, MockBody, DatabaseConfig, DatabaseIndex } from '../interfaces';
 import { ORMFactory } from '../../../core';
 
 /**
@@ -45,11 +45,12 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   @Input() responseBody: string = '{}';
   
   // === Propiedades para configuración de base de datos ===
-  // Valores por defecto basados en getDefaultHttpMocksConfig()
-  @Input() dbName: string = 'HttpMocksDB';
-  @Input() dbVersion: number = 1;
-  @Input() dbObjectStoreName: string = 'httpMocks';
-  @Input() dbKeyPath: string = 'id';
+  // Valores iniciales vacíos - el usuario puede usar "Cargar Configuración por Defecto"
+  @Input() dbName: string = '';
+  @Input() dbVersion: number = 1; // Mínimo valor válido para evitar errores de validación
+  @Input() dbObjectStoreName: string = '';
+  @Input() dbKeyPath: string = '';
+  public dbIndexes: DatabaseIndex[] = [];
 
   // === Eventos de salida (equivalentes a @Event en Stencil) ===
   
@@ -73,6 +74,8 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   public newContextId = signal<number | ''>('');
   public newHeaderKey = signal<string>('');
   public newHeaderValue = signal<string>('');
+  public newIndexName = signal<string>('');
+  public newIndexKeyPath = signal<string>('');
 
   // === Variables para drag & drop ===
   
@@ -110,8 +113,9 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     
     // Suscribirse a eventos del presenter
     this.subscribeToPresenterEvents();
+    
   }
-
+  
   private async initializePresenter(): Promise<void> {
     try {
       await this.presenter.initialize();
@@ -431,20 +435,12 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
 
   async createDatabase(): Promise<void> {
     try {
-      // Obtener configuración por defecto para índices
-      const defaultConfig = ORMFactory.getDefaultHttpMocksConfig();
-      const defaultIndexes = defaultConfig.objectStores[0].indexes || [];
-      
       const config: DatabaseConfig = {
         name: this.dbName,
         version: this.dbVersion,
         objectStoreName: this.dbObjectStoreName,
         keyPath: this.dbKeyPath,
-        indexes: defaultIndexes.map(index => ({
-          name: index.name,
-          keyPath: index.keyPath as string,
-          unique: index.options?.unique || false
-        }))
+        indexes: [...this.dbIndexes] // Usar los índices configurados por el usuario
       };
 
       await this.presenter.handleCreateDatabase(config);
@@ -467,13 +463,73 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     this.dbObjectStoreName = objectStore.name;
     this.dbKeyPath = (objectStore.options?.keyPath as string) || 'id';
     
-    console.log('📄 Default database configuration loaded:', {
+    // Cargar índices por defecto
+    this.dbIndexes = (objectStore.indexes || []).map(index => ({
+      name: index.name,
+      keyPath: index.keyPath as string,
+      unique: index.options?.unique || false
+    }));
+    
+    console.log('📄 Default database configuration loaded with indexes:', {
       name: this.dbName,
       version: this.dbVersion,
       objectStoreName: this.dbObjectStoreName,
       keyPath: this.dbKeyPath,
-      indexesCount: objectStore.indexes?.length || 0
+      indexesCount: this.dbIndexes.length,
+      indexes: this.dbIndexes.map(idx => `${idx.name}: ${idx.keyPath}`)
     });
+    
+    // Mostrar índices específicos cargados
+    console.log('🔍 Loaded default indexes:', this.dbIndexes.map(idx => 
+      `{ name: "${idx.name}", keyPath: "${idx.keyPath}" }`
+    ).join(', '));
+  }
+
+  // === Métodos para gestión de índices de base de datos ===
+
+  addIndex(): void {
+    const indexName = this.newIndexName().trim();
+    const keyPath = this.newIndexKeyPath().trim();
+    
+    if (!indexName || !keyPath) {
+      return;
+    }
+
+    // Verificar si el índice ya existe y actualizarlo
+    const existingIndexIndex = this.dbIndexes.findIndex(index => 
+      index.name === indexName
+    );
+    
+    if (existingIndexIndex !== -1) {
+      // Actualizar índice existente
+      this.dbIndexes[existingIndexIndex] = {
+        name: indexName,
+        keyPath: keyPath,
+        unique: false // Los índices no necesitan ser únicos
+      };
+      console.log('🔄 Index updated:', indexName);
+    } else {
+      // Agregar nuevo índice
+      this.dbIndexes = [...this.dbIndexes, {
+        name: indexName,
+        keyPath: keyPath,
+        unique: false // Los índices no necesitan ser únicos
+      }];
+      console.log('➕ Index added:', indexName);
+    }
+
+    // Limpiar campos
+    this.newIndexName.set('');
+    this.newIndexKeyPath.set('');
+  }
+
+  removeIndex(indexName: string): void {
+    this.dbIndexes = this.dbIndexes.filter(index => index.name !== indexName);
+    console.log('➖ Index removed:', indexName);
+  }
+
+  getIndexCount(): number {
+    return this.dbIndexes.length;
   }
 
   // === Limpieza de recursos ===
