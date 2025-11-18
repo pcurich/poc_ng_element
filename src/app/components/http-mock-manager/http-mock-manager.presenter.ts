@@ -719,6 +719,44 @@ export class HttpMockManagerPresenter implements OnDestroy {
     this._error.set(error);
   }
 
+  // === Gestión avanzada de base de datos ===
+
+  /**
+   * Elimina completamente una base de datos IndexedDB
+   */
+  async deleteDatabase(dbName: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!window.indexedDB) {
+        reject(new Error('IndexedDB not supported'));
+        return;
+      }
+
+      const deleteRequest = indexedDB.deleteDatabase(dbName);
+      
+      deleteRequest.onerror = () => {
+        reject(new Error(`Failed to delete database: ${deleteRequest.error?.message || 'Unknown error'}`));
+      };
+      
+      deleteRequest.onsuccess = () => {
+        // Actualizar el estado interno
+        this._databaseStatus.set({
+          exists: false,
+          isInitialized: false
+        });
+        this._databaseConfig.set(null);
+        
+        console.log(`🗑️ Database '${dbName}' deleted successfully`);
+        resolve();
+      };
+      
+      deleteRequest.onblocked = () => {
+        console.warn(`⚠️ Database deletion blocked. Close all other tabs using this database.`);
+        // En una implementación real, podrías mostrar un mensaje al usuario
+        // Por ahora, seguimos intentando
+      };
+    });
+  }
+
   private setLastOperation(operation: string | null): void {
     this._lastOperation.set(operation);
   }
