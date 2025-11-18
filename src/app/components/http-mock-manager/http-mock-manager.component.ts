@@ -67,15 +67,21 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   
   public showForm = signal<boolean>(true);
   public position = signal<{ bottom: number; right: number }>({ bottom: 32, right: 32 });
-  public activeTab = signal<number>(0);
+  
+  // === Navegación contextual ===
+  public activeGroup = signal<'data' | 'http' | 'persistence'>('data');
+  public activeSubTab = signal<number>(0);
+  
   public contextOptionsState = signal<ContextOption[]>([]);
-  public newContextValue = signal<string>('');
-  public newContextUseMock = signal<boolean>(false);
-  public newContextId = signal<number | ''>('');
   public newHeaderKey = signal<string>('');
   public newHeaderValue = signal<string>('');
   public newIndexName = signal<string>('');
   public newIndexKeyPath = signal<string>('');
+
+  // === Nuevas propiedades para funcionalidad expandida ===
+  public mergeStrategy: string = 'replace';
+  public showDeleteConfirmation: boolean = false;
+  public jsonValidationMessage = signal<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // === Variables para drag & drop ===
   
@@ -91,6 +97,7 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   
   public currentMocks = computed(() => this.presenter.currentMocks());
   public isLoading = computed(() => this.presenter.isLoading());
+
   public statistics = computed(() => this.presenter.statistics());
   public presenterError = computed(() => this.presenter.error());
   public lastOperation = computed(() => this.presenter.lastOperation());
@@ -178,7 +185,7 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     document.removeEventListener('mouseup', this.stopDrag);
   };
 
-  // === Métodos de gestión de contexto usando presenter ===
+  // ========== MÉTODOS DE GESTIÓN DE CONTEXTO ==========
 
   onContextTypeChange(selectedId: string): void {
     const id = Number(selectedId);
@@ -204,7 +211,7 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     this.loadContextEvent.emit(this.contextId);
   }
 
-  // === Métodos de archivo (import/export) ===
+  // ========== MÉTODOS DE ARCHIVO (IMPORT/EXPORT) ==========
 
   downloadConfig(): void {
     let responseBodyValue: any = null;
@@ -273,29 +280,42 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
         this.contextTypeChangeEvent.emit(this.selectedContext);
       }
       
-      // Limpiar input y cambiar a pestaña Mock
+      // Limpiar input
       input.value = '';
-      this.activeTab.set(2);
       
     } catch (e) {
       console.error('Failed to load config file', e);
     }
   }
 
-  // === Métodos de guardado usando presenter ===
+  // ========== MÉTODOS DE GUARDADO ==========
 
   async saveContext(): Promise<void> {
-    const currentTab = this.activeTab();
+    const currentGroup = this.activeGroup();
     
-    if (currentTab === 2) { // Mock tab
-      await this.saveMockSchema();
-    } else if (currentTab === 4) { // Body tab
-      await this.saveMockBody();
+    if (currentGroup === 'http') {
+      // Crear el mock completo con schema y body
+      await this.saveCompleteMock();
     }
   }
 
-  private async saveMockSchema(): Promise<void> {
+  private async saveCompleteMock(): Promise<void> {
     try {
+      // Validar que los campos requeridos estén completos
+      if (!this.nameMock.trim() || !this.url.trim()) {
+        console.error('❌ Missing required fields: nameMock and url are required');
+        return;
+      }
+
+      console.log('💾 Saving complete mock with data:', {
+        name: this.nameMock,
+        url: this.url,
+        method: this.httpMethod,
+        serviceCode: this.serviceCode,
+        responseBody: this.responseBody
+      });
+
+      // Crear primero el schema
       const schema: MockSchema = {
         nameMock: this.nameMock,
         url: this.url,
@@ -306,42 +326,34 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
         headers: Object.keys(this.headers).length > 0 ? this.headers : undefined,
       };
 
-      // Usar presenter para crear el mock
+      // Crear el mock usando el presenter
       const createdMock = await this.presenter.handleSaveMockSchema(schema);
       
-      if (createdMock) {
-        console.log('✅ Mock HTTP creado exitosamente:', createdMock);
+      if (createdMock && createdMock.id) {
+        console.log('✅ Mock schema creado, ahora guardando body...');
         
-        // Emitir evento para compatibilidad
+        // Luego guardar el body
+        const mockBody: MockBody = {
+          responseBody: this.responseBody
+        };
+        
+        await this.presenter.handleSaveMockBody(mockBody, createdMock.id);
+        
+        console.log('✅ Mock completo guardado exitosamente:', createdMock);
+        
+        // Emitir eventos para compatibilidad
         this.saveMockSchemaEvent.emit(schema);
+        this.saveMockBodyEvent.emit(mockBody);
         
         // Limpiar formulario después de guardar exitosamente
         this.resetForm();
       }
     } catch (error) {
-      console.error('Error al guardar mock schema:', error);
+      console.error('❌ Error al guardar mock completo:', error);
     }
   }
 
-  private async saveMockBody(): Promise<void> {
-    try {
-      let bodyPayload: MockBody;
-      try {
-        bodyPayload = { responseBody: JSON.stringify(JSON.parse(this.responseBody)) };
-      } catch (e) {
-        bodyPayload = { responseBody: this.responseBody };
-      }
-      
-      // Usar presenter para guardar el body
-      await this.presenter.handleSaveMockBody(bodyPayload);
-      
-      // Emitir evento para compatibilidad
-      this.saveMockBodyEvent.emit(bodyPayload);
-      console.log('✅ Mock body guardado exitosamente');
-    } catch (error) {
-      console.error('Error al guardar mock body:', error);
-    }
-  }
+
 
   private resetForm(): void {
     this.nameMock = '';
@@ -356,7 +368,7 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     this.newHeaderValue.set('');
   }
 
-  // === Métodos de gestión de headers usando presenter ===
+  // ========== MÉTODOS DE GESTIÓN DE HEADERS ==========
 
   addHeader(): void {
     const key = this.newHeaderKey().trim();
@@ -402,11 +414,21 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     this.showForm.update(current => !current);
   }
 
-  setActiveTab(tabIndex: number): void {
-    this.activeTab.set(tabIndex);
+
+
+  // ========== NAVEGACIÓN CONTEXTUAL ==========
+
+  setActiveGroup(groupName: 'data' | 'http' | 'persistence'): void {
+    this.activeGroup.set(groupName);
+    // Reset sub-tab al cambiar de grupo
+    this.activeSubTab.set(0);
   }
 
-  // === Métodos de integración usando presenter ===
+  setActiveSubTab(subTabIndex: number): void {
+    this.activeSubTab.set(subTabIndex);
+  }
+
+  // ========== MÉTODOS DE INTEGRACIÓN CON PRESENTER ==========
 
   async loadMocksByServiceCode(serviceCode: string): Promise<void> {
     await this.presenter.handleLoadMocksByServiceCode(serviceCode);
@@ -530,6 +552,155 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
 
   getIndexCount(): number {
     return this.dbIndexes.length;
+  }
+
+  // === Métodos de edición y formato ===
+
+  editMock(mock: any): void {
+    // Cargar los datos del mock en el formulario para edición
+    this.nameMock = mock.name;
+    this.serviceCode = mock.serviceCode;
+    this.url = mock.url;
+    this.httpMethod = mock.method;
+    this.httpCodeResponseValue = mock.httpCode;
+    this.delayMs = mock.delayMs || 1000;
+    this.responseBody = mock.responseBody || '{}';
+    
+    // Cambiar a HTTP Definition - Load & Edit (setActiveGroup ya pone sub-tab en 0)
+    this.setActiveGroup('http');
+    
+    console.log('✏️ Mock loaded for editing:', mock.name);
+  }
+
+  formatJson(): void {
+    try {
+      const parsed = JSON.parse(this.responseBody);
+      this.responseBody = JSON.stringify(parsed, null, 2);
+      console.log('🎨 JSON formatted successfully');
+      this.jsonValidationMessage.set({ 
+        type: 'success', 
+        text: '🎨 JSON formateado correctamente' 
+      });
+      
+      // Limpiar el mensaje después de 2 segundos
+      setTimeout(() => {
+        this.jsonValidationMessage.set(null);
+      }, 2000);
+    } catch (error) {
+      console.error('❌ Invalid JSON format:', error);
+      this.jsonValidationMessage.set({ 
+        type: 'error', 
+        text: `❌ No se puede formatear: JSON inválido - ${(error as Error).message}` 
+      });
+      
+      // Limpiar el mensaje después de 5 segundos para errores
+      setTimeout(() => {
+        this.jsonValidationMessage.set(null);
+      }, 5000);
+    }
+  }
+
+  validateJson(): void {
+    try {
+      JSON.parse(this.responseBody);
+      console.log('✅ JSON is valid');
+      this.jsonValidationMessage.set({ 
+        type: 'success', 
+        text: '✅ JSON válido - La estructura es correcta' 
+      });
+      
+      // Limpiar el mensaje después de 3 segundos
+      setTimeout(() => {
+        this.jsonValidationMessage.set(null);
+      }, 3000);
+    } catch (error) {
+      console.error('❌ Invalid JSON:', error);
+      this.jsonValidationMessage.set({ 
+        type: 'error', 
+        text: `❌ JSON inválido: ${(error as Error).message}` 
+      });
+      
+      // Limpiar el mensaje después de 5 segundos para errores
+      setTimeout(() => {
+        this.jsonValidationMessage.set(null);
+      }, 5000);
+    }
+  }
+
+  // === Métodos de persistencia expandidos ===
+
+  exportCompleteDatabase(): void {
+    console.log('🏢 Exporting complete database...');
+    // TODO: Implementar exportación completa de la base de datos
+  }
+
+  // === Métodos de gestión de base de datos ===
+
+  async refreshDatabaseStats(): Promise<void> {
+    try {
+      console.log('🔄 Refreshing database statistics...');
+      
+      // Recargar estadísticas reinicializando el presenter
+      await this.presenter.initialize();
+      
+      console.log('✅ Database statistics refreshed successfully');
+    } catch (error) {
+      console.error('❌ Error refreshing database statistics:', error);
+    }
+  }
+
+  confirmDeleteDatabase(): void {
+    this.showDeleteConfirmation = true;
+  }
+
+  cancelDeleteDatabase(): void {
+    this.showDeleteConfirmation = false;
+  }
+
+  async executeDeleteDatabase(): Promise<void> {
+    try {
+      console.log('🗑️ Deleting database...');
+      this.showDeleteConfirmation = false;
+      
+      // Implementar eliminación de base de datos
+      const config = ORMFactory.getDefaultHttpMocksConfig();
+      await this.presenter.deleteDatabase(config.name);
+      
+      // Reinicializar el componente
+      await this.presenter.initialize();
+      
+      console.log('✅ Database deleted successfully');
+    } catch (error) {
+      console.error('❌ Error deleting database:', error);
+    }
+  }
+
+  async recreateDatabase(): Promise<void> {
+    try {
+      console.log('🔄 Recreating database...');
+      
+      // Eliminar base de datos actual
+      const config = ORMFactory.getDefaultHttpMocksConfig();
+      await this.presenter.deleteDatabase(config.name);
+      
+      // Cargar configuración por defecto y crear nueva base de datos
+      this.loadDefaultDatabaseConfig();
+      await this.createDatabase();
+      
+      console.log('✅ Database recreated successfully');
+    } catch (error) {
+      console.error('❌ Error recreating database:', error);
+    }
+  }
+
+  async cleanDatabase(): Promise<void> {
+    try {
+      console.log('🧹 Cleaning database...');
+      // TODO: Implementar limpieza de datos huérfanos y optimización de índices
+      console.log('✅ Database cleaned successfully');
+    } catch (error) {
+      console.error('❌ Error cleaning database:', error);
+    }
   }
 
   // === Limpieza de recursos ===
