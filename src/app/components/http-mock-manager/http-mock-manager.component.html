@@ -133,10 +133,10 @@
         <!-- DATA MANAGEMENT Sub-tabs -->
         <div class="sub-tabs" *ngIf="activeGroup() === 'data'">
           <button class="sub-tab-btn" [class.active]="activeSubTab() === 0" (click)="setActiveSubTab(0)">
-            🎯 Context Settings
+            🎯 Configuración de Contexto
           </button>
           <button class="sub-tab-btn" [class.active]="activeSubTab() === 1" (click)="setActiveSubTab(1)">
-            🗃️ Database Management
+            🗃️ Gestión de Base de Datos
           </button>
         </div>
 
@@ -170,20 +170,19 @@
         <!-- Sub-tab 0: Context Settings -->
         <div class="sub-tab-content" *ngIf="activeSubTab() === 0">
           <div class="section-header">
-            <h4>🎯 Project Context Settings</h4>
-            <p>Configure how the parent application interacts with the mock system</p>
+            <h4>🎯 Configuración de Contexto del Proyecto</h4>
+            <p>Configura cómo la aplicación principal interactúa con el sistema de mocks</p>
           </div>
 
           <div class="form-group">
-            <label for="contextSelect">Context Type:</label>
+            <label for="contextSelect">Tipo de Contexto:</label>
             <select id="contextSelect" [value]="selectedContext?.id || ''"
               (change)="onContextTypeChange($any($event.target).value)" class="form-select">
               <option *ngFor="let option of contextOptionsState()" [value]="option.id">
                 {{ option.value }}
               </option>
             </select>
-            <small class="field-help">Determines if the parent application should use mock data or real HTTP
-              calls</small>
+            <small class="field-help">Determina si la aplicación principal debe usar datos simulados o llamadas HTTP reales</small>
           </div>
 
           <!-- Statistics Display -->
@@ -218,8 +217,8 @@
         <!-- Sub-tab 1: Database Management -->
         <div class="sub-tab-content" *ngIf="activeSubTab() === 1">
           <div class="section-header">
-            <h4>🗃️ Database Management</h4>
-            <p>Advanced database operations, statistics, and maintenance</p>
+            <h4>🗃️ Gestión de Base de Datos</h4>
+            <p>Operaciones avanzadas de base de datos, estadísticas y mantenimiento</p>
           </div>
 
           <!-- Database Statistics -->
@@ -368,15 +367,34 @@
           </div>
 
           <div class="form-group">
-            <label for="serviceCodeLoad">Service Code:</label>
-            <input id="serviceCodeLoad" type="text" [(ngModel)]="serviceCode"
-              placeholder="Enter service code to load models..." class="form-input">
+            <label for="serviceCodeSelect">Seleccionar Service Code:</label>
+            <select id="serviceCodeSelect" 
+                    [value]="selectedServiceCodeForLoad()" 
+                    (change)="onServiceCodeSelectionChange($any($event.target).value)" 
+                    class="form-select">
+              <option value="">-- Seleccione un Service Code --</option>
+              <option *ngFor="let service of availableServiceCodes()" [value]="service.serviceCode">
+                {{ service.serviceCode }} ({{ service.mockCount }} mocks, {{ service.methods.join(', ') }})
+              </option>
+            </select>
+            <small class="field-help">Seleccione un código de servicio para cargar sus mocks automáticamente</small>
+          </div>
+
+          <!-- Botón para refrescar la lista de service codes -->
+          <div class="form-group">
+            <div class="service-codes-info" *ngIf="availableServiceCodes().length > 0">
+              <span class="info-badge">📋 {{ availableServiceCodes().length }} códigos de servicio disponibles</span>
+            </div>
+            <div class="empty-state-inline" *ngIf="availableServiceCodes().length === 0 && !isLoading()">
+              <span class="empty-icon">📝</span>
+              <span>No hay códigos de servicio disponibles. Cree algunos mocks primero.</span>
+            </div>
           </div>
 
           <div class="form-actions">
-            <button class="btn btn-primary" (click)="loadMocksByServiceCode(serviceCode)"
-              [disabled]="!serviceCode.trim() || isLoading()">
-              {{ isLoading() ? '⏳ Loading...' : '🔄 Load by Service Code' }}
+            <button class="btn btn-secondary" (click)="loadAvailableServiceCodes()" 
+              [disabled]="isLoading()">
+              {{ isLoading() ? '⏳ Cargando...' : '🔄 Actualizar Lista' }}
             </button>
 
             <button class="btn btn-primary" (click)="loadContextById()" [disabled]="isLoading()">

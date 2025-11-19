@@ -41,6 +41,7 @@ export class HttpMockManagerPresenter implements OnDestroy {
   private readonly _statistics = signal<any | null>(null);
   private readonly _selectedServiceCode = signal<string | null>(null);
   private readonly _lastOperation = signal<string | null>(null);
+  private readonly _availableServiceCodes = signal<Array<{ serviceCode: string; mockCount: number; methods: string[] }>>([]);
   
   // === Estado de la base de datos ===
   private readonly _databaseStatus = signal<DatabaseStatus>({
@@ -57,6 +58,7 @@ export class HttpMockManagerPresenter implements OnDestroy {
   public readonly statistics = this._statistics.asReadonly();
   public readonly selectedServiceCode = this._selectedServiceCode.asReadonly();
   public readonly lastOperation = this._lastOperation.asReadonly();
+  public readonly availableServiceCodes = this._availableServiceCodes.asReadonly();
   
   // === Estado de la base de datos ===
   public readonly databaseStatus = this._databaseStatus.asReadonly();
@@ -342,6 +344,38 @@ export class HttpMockManagerPresenter implements OnDestroy {
   }
 
   /**
+   * Carga mocks por código de servicio y retorna el primer mock para auto-población
+   */
+  async handleLoadMocksByServiceCodeWithAutoPopulation(serviceCode: string): Promise<HttpMockEntity | null> {
+    try {
+      this.setLoading(true);
+      this.setLastOperation(`Loading mocks for service: ${serviceCode}`);
+
+      await this.httpMockService.loadMocksByServiceCode(serviceCode);
+      
+      // Obtener mocks del servicio
+      const mocks = this.httpMockService.mocks();
+      this._currentMocks.set(mocks);
+      this._selectedServiceCode.set(serviceCode);
+      
+      this.mocksLoaded$.next(mocks);
+      await this.refreshStatistics();
+      
+      this.setLastOperation(`Loaded ${mocks.length} mocks for service "${serviceCode}"`);
+      
+      // Retornar el primer mock para auto-población (o el más reciente)
+      return mocks.length > 0 ? mocks[0] : null;
+    } catch (error) {
+      const errorMessage = `Failed to load mocks: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      this.setError(errorMessage);
+      this.error$.next(errorMessage);
+      return null;
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  /**
    * Elimina un mock
    */
   async handleDeleteMock(mockId: string): Promise<void> {
@@ -461,10 +495,35 @@ export class HttpMockManagerPresenter implements OnDestroy {
       if (this.httpMockService) {
         const stats = this.httpMockService.statistics();
         this._statistics.set(stats);
+        
+        // También actualizar la lista de service codes disponibles
+        await this.refreshAvailableServiceCodes();
       }
     } catch (error) {
       console.warn('Failed to refresh statistics:', error);
     }
+  }
+
+  /**
+   * Refresca la lista de códigos de servicio disponibles
+   */
+  private async refreshAvailableServiceCodes(): Promise<void> {
+    try {
+      if (this.httpMockService) {
+        const serviceCodes = await this.httpMockService.getServiceCodesWithStats();
+        this._availableServiceCodes.set(serviceCodes);
+      }
+    } catch (error) {
+      console.warn('Failed to refresh available service codes:', error);
+      this._availableServiceCodes.set([]);
+    }
+  }
+
+  /**
+   * Método público para cargar códigos de servicio disponibles
+   */
+  async loadAvailableServiceCodes(): Promise<void> {
+    await this.refreshAvailableServiceCodes();
   }
 
   /**

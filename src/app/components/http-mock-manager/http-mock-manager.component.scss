@@ -40,6 +40,11 @@
     z-index: 9999;
     transition: var(--transition);
     overflow: hidden;
+    
+    // Optimizaciones para drag & drop performance
+    will-change: transform, bottom, right;
+    transform: translateZ(0); // Force hardware acceleration
+    backface-visibility: hidden;
 
     &.hidden {
         height: 48px;
@@ -59,8 +64,13 @@
     padding: var(--space-md) var(--space-lg);
     background: var(--primary);
     color: white;
-    cursor: move;
+    cursor: grab;
     user-select: none;
+    touch-action: none; // Disable touch scrolling during drag
+    
+    &:active {
+        cursor: grabbing;
+    }
 }
 
 .header-title {
@@ -670,6 +680,40 @@
         background: rgba(40, 167, 69, 0.1);
         color: #28a745;
     }
+}
+
+// ========== SERVICE CODE SELECTION ==========
+
+.service-codes-info {
+  margin: var(--space-sm) 0;
+  
+  .info-badge {
+    display: inline-block;
+    padding: var(--space-xs) var(--space-sm);
+    background: rgba(13, 202, 240, 0.1);
+    border: 1px solid rgba(13, 202, 240, 0.3);
+    border-radius: var(--radius);
+    font-size: var(--font-xs);
+    font-weight: 500;
+    color: #0a58ca;
+  }
+}
+
+.empty-state-inline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  margin: var(--space-sm) 0;
+  background: rgba(108, 117, 125, 0.08);
+  border: 1px dashed rgba(108, 117, 125, 0.3);
+  border-radius: var(--radius);
+  font-size: var(--font-xs);
+  color: #6c757d;
+  
+  .empty-icon {
+    font-size: var(--font-sm);
+  }
 }
 
 .services-overview {
