@@ -79,6 +79,7 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   // === Nuevas propiedades para funcionalidad expandida ===
   public mergeStrategy: string = 'replace';
   public showDeleteConfirmation: boolean = false;
+  public showSaveConfirmation: boolean = false;
   public jsonValidationMessage = signal<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // === Service Code Selection ===
@@ -97,6 +98,37 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   private presenter: HttpMockManagerPresenter = new HttpMockManagerPresenter();
 
   // === Computed properties usando el presenter ===
+
+  /**
+   * Agrega una cabecera común predefinida con su valor por defecto
+   * @param headerName - Nombre de la cabecera HTTP
+   * @param defaultValue - Valor por defecto para la cabecera
+   */
+  addCommonHeader(headerName: string, defaultValue: string): void {
+    // Verificar si la cabecera ya existe (no debería pasar debido a los botones deshabilitados)
+    if (this.headers[headerName]) {
+      console.log(`Header ${headerName} already exists with value: ${this.headers[headerName]}`);
+      return;
+    }
+
+    // Agregar la cabecera con el valor por defecto
+    this.headers[headerName] = defaultValue;
+    
+    // Mostrar confirmación de éxito
+    console.log(`Added header: ${headerName} = ${defaultValue}`);
+    this.jsonValidationMessage.set({
+      type: 'success',
+      text: `Cabecera "${headerName}" agregada exitosamente`
+    });
+    
+    // Limpiar mensaje después de 2 segundos
+    setTimeout(() => {
+      this.jsonValidationMessage.set(null);
+    }, 2000);
+    
+    // Emitir evento para notificar cambios en headers
+    this.saveHeadersEvent.emit(this.headers);
+  }
   
   public currentMocks = computed(() => this.presenter.currentMocks());
   public isLoading = computed(() => this.presenter.isLoading());
@@ -133,7 +165,7 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
       console.log('🎭 HttpMockManagerPresenter initialized successfully');
       
       // Cargar códigos de servicio disponibles al inicializar
-      await this.loadAvailableServiceCodes();
+      await this.presenter.loadAvailableServiceCodes();
       
       // Inicializar estadísticas de la base de datos
       await this.refreshDatabaseStats();
@@ -397,6 +429,9 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     if (currentGroup === 'http') {
       // Crear el mock completo con schema y body
       await this.saveCompleteMock();
+      
+      // Mostrar confirmación para siguiente acción
+      this.showSaveConfirmation = true;
     }
   }
 
@@ -449,8 +484,7 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
         this.saveMockSchemaEvent.emit(schema);
         this.saveMockBodyEvent.emit(mockBody);
         
-        // Limpiar formulario después de guardar exitosamente
-        this.resetForm();
+        // NO hacer reset automático - se manejará en la confirmación
       }
     } catch (error) {
       console.error('❌ Error al guardar mock completo:', error);
@@ -552,10 +586,7 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   async loadMocksByServiceCode(serviceCode: string): Promise<void> {
     await this.presenter.handleLoadMocksByServiceCode(serviceCode);
   }
-
-  async loadAvailableServiceCodes(): Promise<void> {
-    await this.presenter.loadAvailableServiceCodes();
-  }
+ 
 
   async onServiceCodeSelectionChange(selectedServiceCode: string): Promise<void> {
     this.selectedServiceCodeForLoad = selectedServiceCode;
@@ -797,6 +828,7 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
 
   async refreshDatabaseStats(): Promise<void> {
     try {
+
       console.log('🔄 Refreshing database statistics...');
       
       // Cargar configuración de base de datos por defecto
@@ -846,41 +878,40 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     }
   }
 
-  async recreateDatabase(): Promise<void> {
+  async reinitializeDatabase(): Promise<void> {
     try {
-      console.log('🔄 Recreating database...');
+      debugger;
+      console.log('🔄 Reinitializing database system...');
       
-      // Eliminar base de datos actual
-      const config = ORMFactory.getDefaultHttpMocksConfig();
-      await this.presenter.deleteDatabase(config.name);
+      // Primero limpiar todos los registros de la base de datos
+      await this.presenter.clearAllMocks();
+      console.log('✅ All mock records cleared from database');
       
-      // Cargar configuración por defecto y crear nueva base de datos
-      this.loadDefaultDatabaseConfig();
-      await this.createDatabase();
+      // Luego reinicializar el presenter para limpiar cualquier cache
+      await this.presenter.initialize();
       
-      // Actualizar estadísticas después de recrear
+      // Recargar todas las estadísticas después de la reinicialización
       await this.refreshDatabaseStats();
       
-      console.log('✅ Database recreated and statistics refreshed successfully');
+      console.log('✅ Database system reinitialized with empty state and statistics refreshed successfully');
     } catch (error) {
-      console.error('❌ Error recreating database:', error);
+      console.error('❌ Error reinitializing database system:', error);
     }
   }
 
-  async cleanDatabase(): Promise<void> {
-    try {
-      console.log('🧹 Cleaning database...');
-      
-      // Reinicializar el presenter para limpiar cualquier cache
-      await this.presenter.initialize();
-      
-      // Recargar todas las estadísticas después de la limpieza
-      await this.refreshDatabaseStats();
-      
-      console.log('✅ Database cleaned and statistics refreshed successfully');
-    } catch (error) {
-      console.error('❌ Error cleaning database:', error);
-    }
+  // === Métodos para manejar confirmación de guardado ===
+
+  continueEditing(): void {
+    this.showSaveConfirmation = false;
+    console.log('📝 Usuario decidió continuar editando el mock actual');
+    // No hacer nada, mantener el formulario como está
+  }
+
+  createNewRecord(): void {
+    this.showSaveConfirmation = false;
+    console.log('➕ Usuario decidió crear un nuevo registro');
+    // Limpiar formulario para nuevo registro
+    this.resetForm();
   }
 
   // === Limpieza de recursos ===

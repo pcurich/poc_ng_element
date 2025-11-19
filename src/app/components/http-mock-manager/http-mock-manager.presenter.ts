@@ -722,8 +722,6 @@ export class HttpMockManagerPresenter implements OnDestroy {
       this.httpMockService = new HttpMockService();
       await this.httpMockService.initialize(this.httpMockRepository);
 
-      // Suscribirse a cambios del servicio
-      this.subscribeToServiceChanges();
       
       // Actualizar estadísticas después de inicializar los servicios
       await this.refreshStatistics();
@@ -795,13 +793,6 @@ export class HttpMockManagerPresenter implements OnDestroy {
     }
   }
 
-  private subscribeToServiceChanges(): void {
-    if (this.httpMockService) {
-      // Suscribirse a cambios en el estado del servicio
-      // (Esto dependería de la implementación específica del HttpMockService)
-      // Por ahora, manejamos los cambios manualmente en cada operación
-    }
-  }
 
   private setLoading(loading: boolean): void {
     this._isLoading.set(loading);
@@ -847,6 +838,41 @@ export class HttpMockManagerPresenter implements OnDestroy {
         // Por ahora, seguimos intentando
       };
     });
+  }
+
+  /**
+   * Limpia todos los mocks de la base de datos
+   */
+  async clearAllMocks(): Promise<void> {
+    try {
+      this.setLoading(true);
+      this.setLastOperation('Clearing all mocks from database...');
+
+      if (!this.httpMockService) {
+        throw new Error('HTTP Mock Service not initialized');
+      }
+
+      await this.httpMockService.clearAllMocks();
+      
+      // Resetear estado local
+      this._currentMocks.set([]);
+      this._statistics.set({
+        totalMocks: 0,
+        averageDelayMs: 0,
+        mostUsedServiceCodes: [],
+        methodDistribution: {},
+        statusCodeDistribution: {}
+      });
+      this._availableServiceCodes.set([]);
+
+      this.setLastOperation('All mocks cleared successfully');
+    } catch (error) {
+      const errorMessage = `Failed to clear mocks: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      this.setError(errorMessage);
+      throw error;
+    } finally {
+      this.setLoading(false);
+    }
   }
 
   private setLastOperation(operation: string | null): void {
