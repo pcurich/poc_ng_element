@@ -13,3 +13,6 @@ export * from './http-mock-manager-presenter.interface';
 
 // Database Configuration interfaces
 export * from './database-config.interface';
+
+// Service Code Statistics interfaces
+export * from './service-code-stats.interface';

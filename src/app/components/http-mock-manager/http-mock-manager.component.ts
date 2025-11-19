@@ -26,7 +26,6 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   
   // === Props de entrada (equivalentes a @Prop en Stencil) ===
   
-  @Input() contextId: number = 1;
   @Input() selectedContext?: ContextOption;
   @Input() contextOptions: ContextOption[] = [
     { id: 1, value: '---------', useMock: false },
@@ -58,7 +57,6 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   @Output() saveMockBodyEvent = new EventEmitter<MockBody>();
   @Output() saveHeadersEvent = new EventEmitter<Record<string, string>>();
   @Output() databaseCreatedEvent = new EventEmitter<void>();
-  @Output() loadContextEvent = new EventEmitter<number>();
   @Output() deleteContextEvent = new EventEmitter<number>();
   @Output() contextTypeChangeEvent = new EventEmitter<ContextOption>();
   @Output() reloadEvent = new EventEmitter<void>();
@@ -84,14 +82,14 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   public jsonValidationMessage = signal<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // === Service Code Selection ===
-  public selectedServiceCodeForLoad = signal<string>('');
+  public selectedServiceCodeForLoad: string = '';
 
-  // === Variables para drag & drop ===
+  // === Variables para drag & drop optimizado ===
   
   private dragging = false;
   private dragStart = { x: 0, y: 0, bottom: 32, right: 32 };
-  private lastDragUpdate = 0;
-  private readonly DRAG_THROTTLE_MS = 16; // ~60fps
+  private animationId = 0;
+  private dragElement: HTMLElement | null = null;
 
 
   // === Presenter (Capa de presentación) ===
@@ -136,6 +134,9 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
       
       // Cargar códigos de servicio disponibles al inicializar
       await this.loadAvailableServiceCodes();
+      
+      // Inicializar estadísticas de la base de datos
+      await this.refreshDatabaseStats();
     } catch (error) {
       console.error('Failed to initialize HttpMockManagerPresenter:', error);
     }
@@ -163,11 +164,41 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   // === Métodos de drag & drop ===
 
   startDrag(event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    
+    // Lista de elementos y clases que no deben iniciar el drag
+    const nonDraggableSelectors = [
+      'button', 'input', 'select', 'textarea', 'a',
+      '.btn', '.form-input', '.form-select', '.form-textarea',
+      '.control-btn', '.sub-tab-btn', '.group-btn'
+    ];
+    
+    // Verificar si el elemento clickeado o algún ancestro es no-draggable
+    let element: HTMLElement | null = target;
+    while (element && element !== event.currentTarget) {
+      const tagName = element.tagName.toLowerCase();
+      
+      // Verificar tag names
+      if (nonDraggableSelectors.includes(tagName)) {
+        return; // No iniciar drag
+      }
+      
+      // Verificar clases CSS
+      const hasNonDraggableClass = nonDraggableSelectors.some(selector => 
+        selector.startsWith('.') && element!.classList.contains(selector.substring(1))
+      );
+      
+      if (hasNonDraggableClass) {
+        return; // No iniciar drag
+      }
+      
+      element = element.parentElement;
+    }
+    
     event.preventDefault();
     event.stopPropagation();
     
     this.dragging = true;
-    this.lastDragUpdate = 0; // Reset throttle counter
     
     this.dragStart = {
       x: event.clientX,
@@ -176,9 +207,13 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
       right: this.position().right,
     };
     
-    // Usar passive: false para mejor rendimiento en eventos
-    document.addEventListener('mousemove', this.onDrag, { passive: true });
+    // Event listeners con passive: false para poder cancelar eventos si es necesario
+    document.addEventListener('mousemove', this.onDrag, { passive: false });
     document.addEventListener('mouseup', this.stopDrag, { passive: true });
+    
+    // Añadir clase dragging para activar optimizaciones CSS
+    this.dragElement = event.currentTarget as HTMLElement;
+    this.dragElement.classList.add('dragging');
     
     // Añadir cursor de dragging al documento
     document.body.style.cursor = 'grabbing';
@@ -188,21 +223,47 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   private onDrag = (event: MouseEvent): void => {
     if (!this.dragging) return;
     
-    // Throttle drag updates para mejorar rendimiento
-    const now = performance.now();
-    if (now - this.lastDragUpdate < this.DRAG_THROTTLE_MS) return;
-    this.lastDragUpdate = now;
+    event.preventDefault(); // Prevenir selección de texto durante drag
     
-    // Usar requestAnimationFrame para suavizar la animación
-    requestAnimationFrame(() => {
-      if (!this.dragging) return; // Verificar que sigue arrastrando
+    // Cancelar animación anterior si existe
+    if (this.animationId) {
+      cancelAnimationFrame(this.animationId);
+    }
+    
+    // Usar requestAnimationFrame para sincronizar con el refresh de pantalla
+    this.animationId = requestAnimationFrame(() => {
+      if (!this.dragging) return;
       
       const deltaY = event.clientY - this.dragStart.y;
       const deltaX = event.clientX - this.dragStart.x;
       
+      // Calcular nueva posición propuesta
+      const proposedBottom = this.dragStart.bottom - deltaY;
+      const proposedRight = this.dragStart.right - deltaX;
+      
+      // Límites de la ventana con márgenes de seguridad
+      const safeMargin = 20; // margen de seguridad en todos los lados
+      const headerHeight = 48; // altura del header para que siempre sea visible
+      
+      // Para bottom positioning:
+      // - bottom: 0 = pegado al fondo de la pantalla
+      // - bottom: window.innerHeight-headerHeight = solo el header visible arriba
+      const minBottom = 0; // puede tocar el fondo
+      const maxBottom = window.innerHeight - headerHeight; // siempre mostrar al menos el header
+      
+      // Para right positioning:
+      // - right: 0 = pegado al lado derecho
+      // - right: window.innerWidth-width = pegado al lado izquierdo
+      const minRight = 0; // puede tocar el lado derecho
+      const maxRight = Math.max(0, window.innerWidth - 420); // no salirse por la izquierda
+      
+      // Aplicar límites
+      const newBottom = Math.max(minBottom, Math.min(maxBottom, proposedBottom));
+      const newRight = Math.max(minRight, Math.min(maxRight, proposedRight));
+      
       this.position.set({
-        bottom: Math.max(0, this.dragStart.bottom - deltaY),
-        right: Math.max(0, this.dragStart.right - deltaX),
+        bottom: newBottom,
+        right: newRight,
       });
     });
   };
@@ -211,6 +272,18 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     if (!this.dragging) return; // Prevenir múltiples calls
     
     this.dragging = false;
+    
+    // Cancelar animación pendiente
+    if (this.animationId) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = 0;
+    }
+    
+    // Remover clase dragging y restaurar transiciones CSS
+    if (this.dragElement) {
+      this.dragElement.classList.remove('dragging');
+      this.dragElement = null;
+    }
     
     // Remover event listeners
     document.removeEventListener('mousemove', this.onDrag);
@@ -239,13 +312,7 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     }
   }
 
-  loadContextById(): void {
-    // Usar presenter para cargar contexto
-    this.presenter.handleLoadContext(this.contextId);
-    
-    // Emitir evento para compatibilidad
-    this.loadContextEvent.emit(this.contextId);
-  }
+
 
   // ========== MÉTODOS DE ARCHIVO (IMPORT/EXPORT) ==========
 
@@ -258,7 +325,6 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     }
 
     const payload = {
-      contextId: this.contextId,
       selectedContext: this.selectedContext,
       headers: this.headers,
       nameMock: this.nameMock,
@@ -276,7 +342,7 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `http-mock-${this.contextId || 'config'}.json`;
+      a.download = `http-mock-config.json`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -296,7 +362,6 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
       const parsed = JSON.parse(txt);
       
       // Asignar campos de manera segura
-      if (typeof parsed.contextId !== 'undefined') this.contextId = Number(parsed.contextId);
       if (parsed.selectedContext) this.selectedContext = parsed.selectedContext;
       if (parsed.headers && typeof parsed.headers === 'object') this.headers = { ...parsed.headers };
       if (typeof parsed.nameMock !== 'undefined') this.nameMock = String(parsed.nameMock);
@@ -377,6 +442,9 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
         
         console.log('✅ Mock completo guardado exitosamente:', createdMock);
         
+        // Actualizar estadísticas después de guardar el mock
+        await this.refreshDatabaseStats();
+        
         // Emitir eventos para compatibilidad
         this.saveMockSchemaEvent.emit(schema);
         this.saveMockBodyEvent.emit(mockBody);
@@ -437,7 +505,7 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
 
   // === Métodos de utilidad ===
 
-  onInputNumber(event: Event, key: 'contextId' | 'delayMs'): void {
+  onInputNumber(event: Event, key: 'delayMs'): void {
     const val = (event.target as HTMLInputElement).value;
     (this as any)[key] = val === '' ? 0 : Number(val);
   }
@@ -458,10 +526,25 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     this.activeGroup.set(groupName);
     // Reset sub-tab al cambiar de grupo
     this.activeSubTab.set(0);
+    
+    // Auto-refresh database statistics when entering data management group
+    if (groupName === 'data') {
+      setTimeout(() => {
+        this.refreshDatabaseStats();
+      }, 100);
+    }
   }
 
   setActiveSubTab(subTabIndex: number): void {
     this.activeSubTab.set(subTabIndex);
+    
+    // Auto-refresh database statistics when entering Database Management tab
+    if (this.activeGroup() === 'data' && subTabIndex === 1) {
+      // Ejecutar refreshDatabaseStats asíncronamente para no bloquear el cambio de pestaña
+      setTimeout(() => {
+        this.refreshDatabaseStats();
+      }, 100);
+    }
   }
 
   // ========== MÉTODOS DE INTEGRACIÓN CON PRESENTER ==========
@@ -475,7 +558,7 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   }
 
   async onServiceCodeSelectionChange(selectedServiceCode: string): Promise<void> {
-    this.selectedServiceCodeForLoad.set(selectedServiceCode);
+    this.selectedServiceCodeForLoad = selectedServiceCode;
     
     if (selectedServiceCode && selectedServiceCode.trim() !== '') {
       // Cargar mocks y auto-poblar campos
@@ -537,6 +620,10 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
       };
 
       await this.presenter.handleCreateDatabase(config);
+      
+      // Actualizar estadísticas después de crear la base de datos
+      await this.refreshDatabaseStats();
+      
       this.databaseCreatedEvent.emit();
       
       console.log('🗃️ Database created successfully from component');
@@ -633,12 +720,13 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     this.serviceCode = mock.serviceCode;
     this.url = mock.url;
     this.httpMethod = mock.method;
-    this.httpCodeResponseValue = mock.httpCode;
+    this.httpCodeResponseValue = mock.httpCodeResponseValue;
     this.delayMs = mock.delayMs || 1000;
     this.responseBody = mock.responseBody || '{}';
     
-    // Cambiar a HTTP Definition - Load & Edit (setActiveGroup ya pone sub-tab en 0)
+    // Cambiar a HTTP Definition y activar Mock Config (sub-tab 1)
     this.setActiveGroup('http');
+    this.setActiveSubTab(1);
     
     console.log('✏️ Mock loaded for editing:', mock.name);
   }
@@ -711,8 +799,20 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     try {
       console.log('🔄 Refreshing database statistics...');
       
-      // Recargar estadísticas reinicializando el presenter
+      // Cargar configuración de base de datos por defecto
+      await this.presenter.loadDefaultDatabaseConfig();
+      
+      // Forzar actualización completa del presenter
       await this.presenter.initialize();
+      
+      // Actualizar estadísticas específicamente
+      await this.presenter.refreshStatistics();
+      
+      // Recargar service codes disponibles para actualizar estadísticas
+      await this.presenter.loadAvailableServiceCodes();
+      
+      // Simular un pequeño delay para asegurar que la UI se actualice
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       console.log('✅ Database statistics refreshed successfully');
     } catch (error) {
@@ -758,7 +858,10 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
       this.loadDefaultDatabaseConfig();
       await this.createDatabase();
       
-      console.log('✅ Database recreated successfully');
+      // Actualizar estadísticas después de recrear
+      await this.refreshDatabaseStats();
+      
+      console.log('✅ Database recreated and statistics refreshed successfully');
     } catch (error) {
       console.error('❌ Error recreating database:', error);
     }
@@ -767,8 +870,14 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   async cleanDatabase(): Promise<void> {
     try {
       console.log('🧹 Cleaning database...');
-      // TODO: Implementar limpieza de datos huérfanos y optimización de índices
-      console.log('✅ Database cleaned successfully');
+      
+      // Reinicializar el presenter para limpiar cualquier cache
+      await this.presenter.initialize();
+      
+      // Recargar todas las estadísticas después de la limpieza
+      await this.refreshDatabaseStats();
+      
+      console.log('✅ Database cleaned and statistics refreshed successfully');
     } catch (error) {
       console.error('❌ Error cleaning database:', error);
     }
@@ -777,10 +886,28 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   // === Limpieza de recursos ===
 
   ngOnDestroy(): void {
+    // Cancelar cualquier animación pendiente
+    if (this.animationId) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = 0;
+    }
+    
+    // Limpiar clase dragging si está activa
+    if (this.dragElement) {
+      this.dragElement.classList.remove('dragging');
+      this.dragElement = null;
+    }
+    
+    // Limpiar event listeners de drag
     document.removeEventListener('mousemove', this.onDrag);
     document.removeEventListener('mouseup', this.stopDrag);
+    
+    // Restaurar estilos del documento si quedaron activos
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
     
     // Limpiar presenter
     this.presenter.ngOnDestroy();
   }
+
 }

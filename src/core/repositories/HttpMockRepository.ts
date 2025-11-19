@@ -16,6 +16,7 @@
 import { BaseRepository } from './BaseRepository';
 import { HttpMockEntity, HttpMethod, IHttpMockData } from '../models/HttpMockEntity';
 import { IDbContext } from '../context/IDbContext';
+import { ServiceCodeWithStats } from '../../app/components/interfaces';
 
 /**
  * Interface específica para estadísticas de HTTP Mocks
@@ -463,16 +464,16 @@ export class HttpMockRepository extends BaseRepository<HttpMockEntity, string> {
   /**
    * Obtiene información de servicios con estadísticas básicas
    */
-  async getServiceCodesWithStats(): Promise<Array<{ serviceCode: string; mockCount: number; methods: string[] }>> {
+  async getServiceCodesWithStats(): Promise<ServiceCodeWithStats[]> {
     try {
       const allMocks = await this.findAll();
-      const servicesMap = new Map<string, { count: number; methods: Set<string> }>();
+      const servicesMap = new Map<string, { id:string; count: number; methods: Set<string> }>();
       
       allMocks.forEach(mock => {
         if (mock.serviceCode && mock.serviceCode.trim() !== '') {
           const serviceCode = mock.serviceCode;
           if (!servicesMap.has(serviceCode)) {
-            servicesMap.set(serviceCode, { count: 0, methods: new Set() });
+            servicesMap.set(serviceCode, { id: mock.id! , count: 0, methods: new Set() });
           }
           
           const serviceInfo = servicesMap.get(serviceCode)!;
@@ -483,6 +484,7 @@ export class HttpMockRepository extends BaseRepository<HttpMockEntity, string> {
       
       return Array.from(servicesMap.entries())
         .map(([serviceCode, info]) => ({
+          id: info.id,
           serviceCode,
           mockCount: info.count,
           methods: Array.from(info.methods).sort()
