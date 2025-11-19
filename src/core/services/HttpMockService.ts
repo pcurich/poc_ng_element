@@ -499,6 +499,30 @@ export class HttpMockService {
   }
 
   /**
+   * Obtiene todos los códigos de servicio disponibles en la base de datos
+   */
+  async getAllServiceCodes(): Promise<string[]> {
+    try {
+      return await this.httpMockRepository.getAllServiceCodes();
+    } catch (error) {
+      this.setError(`Failed to get service codes: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return [];
+    }
+  }
+
+  /**
+   * Obtiene códigos de servicio con estadísticas básicas
+   */
+  async getServiceCodesWithStats(): Promise<Array<{ serviceCode: string; mockCount: number; methods: string[] }>> {
+    try {
+      return await this.httpMockRepository.getServiceCodesWithStats();
+    } catch (error) {
+      this.setError(`Failed to get service codes with stats: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return [];
+    }
+  }
+
+  /**
    * Resetea el estado del servicio
    */
   reset(): void {

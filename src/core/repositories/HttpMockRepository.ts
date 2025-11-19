@@ -355,4 +355,142 @@ export class HttpMockRepository extends BaseRepository<HttpMockEntity, string> {
     
     return createdMocks;
   }
+
+  /**
+   * Obtiene el nombre de la tabla dinamicamente basado en la configuración
+   * Si this.tableName no está disponible, obtiene el primer objectStore de la base de datos
+   */
+  private async getDynamicTableName(): Promise<string> {
+    // Usar el tableName del BaseRepository si está disponible
+    if (this.tableName && this.tableName.trim() !== '') {
+      return this.tableName;
+    }
+    
+    // Fallback: obtener el primer objectStore de la base de datos
+    try {
+      const db = await this.dbContext.getDB();
+      if (db.objectStoreNames.length > 0) {
+        return db.objectStoreNames[0];
+      }
+    } catch (error) {
+      console.error('Error getting database object stores:', error);
+    }
+    
+    // Último fallback: usar el nombre por defecto de la configuración
+    console.warn('Using default table name fallback');
+    return 'httpMocks'; // Último recurso
+  }
+
+  /**
+   * Obtiene todos los códigos de servicio únicos disponibles en la base de datos
+   * Optimizado usando el índice serviceCode para mejor rendimiento
+   * Usa nombre de tabla dinámico basado en la configuración de la base de datos
+   */
+  async getAllServiceCodes(): Promise<string[]> {
+    try {
+      const serviceCodes = new Set<string>();
+      const dynamicTableName = await this.getDynamicTableName();
+      
+      // Usar transacción para acceder al índice serviceCode
+      await this.dbContext.runTransaction(dynamicTableName, 'readonly', (store: IDBObjectStore) => {
+        return new Promise<void>((resolve, reject) => {
+          // Obtener el índice serviceCode
+          const index = store.index('serviceCode');
+          
+          // Abrir cursor en el índice para obtener solo las claves únicas
+          const request = index.openKeyCursor();
+          
+          let currentServiceCode: string | null = null;
+          
+          request.onsuccess = (event) => {
+            const cursor = (event.target as IDBRequest<IDBCursor | null>).result;
+            
+            if (cursor) {
+              const serviceCode = cursor.key as string;
+              
+              // Solo agregar si es diferente al anterior (aprovechamos que el índice está ordenado)
+              // y no es vacío o solo espacios
+              if (serviceCode && 
+                  serviceCode.trim() !== '' && 
+                  serviceCode !== currentServiceCode) {
+                serviceCodes.add(serviceCode);
+                currentServiceCode = serviceCode;
+              }
+              
+              // Avanzar al siguiente serviceCode único
+              try {
+                cursor.continue(serviceCode); // Esto saltará duplicados
+              } catch (e) {
+                // Si falla continue, usar continue() normal
+                cursor.continue();
+              }
+            } else {
+              // No hay más elementos
+              resolve();
+            }
+          };
+          
+          request.onerror = () => {
+            reject(new Error('Error reading serviceCode index'));
+          };
+        });
+      });
+      
+      return Array.from(serviceCodes).sort();
+    } catch (error) {
+      console.error('Error getting service codes using index:', error);
+      
+      // Fallback al método anterior si el índice falla
+      try {
+        console.warn('Falling back to full scan method...');
+        const allMocks = await this.findAll();
+        const serviceCodes = new Set<string>();
+        
+        allMocks.forEach(mock => {
+          if (mock.serviceCode && mock.serviceCode.trim() !== '') {
+            serviceCodes.add(mock.serviceCode);
+          }
+        });
+        
+        return Array.from(serviceCodes).sort();
+      } catch (fallbackError) {
+        console.error('Fallback method also failed:', fallbackError);
+        return [];
+      }
+    }
+  }
+
+  /**
+   * Obtiene información de servicios con estadísticas básicas
+   */
+  async getServiceCodesWithStats(): Promise<Array<{ serviceCode: string; mockCount: number; methods: string[] }>> {
+    try {
+      const allMocks = await this.findAll();
+      const servicesMap = new Map<string, { count: number; methods: Set<string> }>();
+      
+      allMocks.forEach(mock => {
+        if (mock.serviceCode && mock.serviceCode.trim() !== '') {
+          const serviceCode = mock.serviceCode;
+          if (!servicesMap.has(serviceCode)) {
+            servicesMap.set(serviceCode, { count: 0, methods: new Set() });
+          }
+          
+          const serviceInfo = servicesMap.get(serviceCode)!;
+          serviceInfo.count++;
+          serviceInfo.methods.add(mock.method);
+        }
+      });
+      
+      return Array.from(servicesMap.entries())
+        .map(([serviceCode, info]) => ({
+          serviceCode,
+          mockCount: info.count,
+          methods: Array.from(info.methods).sort()
+        }))
+        .sort((a, b) => a.serviceCode.localeCompare(b.serviceCode));
+    } catch (error) {
+      console.error('Error getting service codes with stats:', error);
+      return [];
+    }
+  }
 }

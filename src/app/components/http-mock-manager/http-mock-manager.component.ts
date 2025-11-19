@@ -83,10 +83,15 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   public showDeleteConfirmation: boolean = false;
   public jsonValidationMessage = signal<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // === Service Code Selection ===
+  public selectedServiceCodeForLoad = signal<string>('');
+
   // === Variables para drag & drop ===
   
   private dragging = false;
   private dragStart = { x: 0, y: 0, bottom: 32, right: 32 };
+  private lastDragUpdate = 0;
+  private readonly DRAG_THROTTLE_MS = 16; // ~60fps
 
 
   // === Presenter (Capa de presentación) ===
@@ -101,6 +106,7 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   public statistics = computed(() => this.presenter.statistics());
   public presenterError = computed(() => this.presenter.error());
   public lastOperation = computed(() => this.presenter.lastOperation());
+  public availableServiceCodes = computed(() => this.presenter.availableServiceCodes());
   
   // === Estado de la base de datos ===
   public databaseStatus = computed(() => this.presenter.databaseStatus());
@@ -127,6 +133,9 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     try {
       await this.presenter.initialize();
       console.log('🎭 HttpMockManagerPresenter initialized successfully');
+      
+      // Cargar códigos de servicio disponibles al inicializar
+      await this.loadAvailableServiceCodes();
     } catch (error) {
       console.error('Failed to initialize HttpMockManagerPresenter:', error);
     }
@@ -155,7 +164,11 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
 
   startDrag(event: MouseEvent): void {
     event.preventDefault();
+    event.stopPropagation();
+    
     this.dragging = true;
+    this.lastDragUpdate = 0; // Reset throttle counter
+    
     this.dragStart = {
       x: event.clientX,
       y: event.clientY,
@@ -163,26 +176,49 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
       right: this.position().right,
     };
     
-    document.addEventListener('mousemove', this.onDrag);
-    document.addEventListener('mouseup', this.stopDrag);
+    // Usar passive: false para mejor rendimiento en eventos
+    document.addEventListener('mousemove', this.onDrag, { passive: true });
+    document.addEventListener('mouseup', this.stopDrag, { passive: true });
+    
+    // Añadir cursor de dragging al documento
+    document.body.style.cursor = 'grabbing';
+    document.body.style.userSelect = 'none';
   }
 
   private onDrag = (event: MouseEvent): void => {
     if (!this.dragging) return;
     
-    const deltaY = event.clientY - this.dragStart.y;
-    const deltaX = event.clientX - this.dragStart.x;
+    // Throttle drag updates para mejorar rendimiento
+    const now = performance.now();
+    if (now - this.lastDragUpdate < this.DRAG_THROTTLE_MS) return;
+    this.lastDragUpdate = now;
     
-    this.position.set({
-      bottom: Math.max(0, this.dragStart.bottom - deltaY),
-      right: Math.max(0, this.dragStart.right - deltaX),
+    // Usar requestAnimationFrame para suavizar la animación
+    requestAnimationFrame(() => {
+      if (!this.dragging) return; // Verificar que sigue arrastrando
+      
+      const deltaY = event.clientY - this.dragStart.y;
+      const deltaX = event.clientX - this.dragStart.x;
+      
+      this.position.set({
+        bottom: Math.max(0, this.dragStart.bottom - deltaY),
+        right: Math.max(0, this.dragStart.right - deltaX),
+      });
     });
   };
 
   private stopDrag = (): void => {
+    if (!this.dragging) return; // Prevenir múltiples calls
+    
     this.dragging = false;
+    
+    // Remover event listeners
     document.removeEventListener('mousemove', this.onDrag);
     document.removeEventListener('mouseup', this.stopDrag);
+    
+    // Restaurar cursor y selección de texto
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
   };
 
   // ========== MÉTODOS DE GESTIÓN DE CONTEXTO ==========
@@ -432,6 +468,41 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
 
   async loadMocksByServiceCode(serviceCode: string): Promise<void> {
     await this.presenter.handleLoadMocksByServiceCode(serviceCode);
+  }
+
+  async loadAvailableServiceCodes(): Promise<void> {
+    await this.presenter.loadAvailableServiceCodes();
+  }
+
+  async onServiceCodeSelectionChange(selectedServiceCode: string): Promise<void> {
+    this.selectedServiceCodeForLoad.set(selectedServiceCode);
+    
+    if (selectedServiceCode && selectedServiceCode.trim() !== '') {
+      // Cargar mocks y auto-poblar campos
+      const firstMock = await this.presenter.handleLoadMocksByServiceCodeWithAutoPopulation(selectedServiceCode);
+      
+      if (firstMock) {
+        // Auto-poblar campos de Mock Config
+        this.nameMock = firstMock.name || '';
+        this.serviceCode = firstMock.serviceCode;
+        this.url = firstMock.url;
+        this.httpMethod = firstMock.method as HttpMethod;
+        this.httpCodeResponseValue = firstMock.httpCodeResponseValue;
+        this.delayMs = firstMock.delayMs;
+        
+        // Auto-poblar Headers
+        if (firstMock.headers) {
+          this.headers = { ...firstMock.headers };
+        } else {
+          this.headers = {};
+        }
+        
+        // Auto-poblar Body
+        this.responseBody = firstMock.responseBody || '{}';
+        
+        console.log('🎯 Auto-populated fields from first mock:', firstMock.name);
+      }
+    }
   }
 
   async deleteMock(mockId: string): Promise<void> {
