@@ -143,16 +143,16 @@
         <!-- HTTP DEFINITION Sub-tabs -->
         <div class="sub-tabs" *ngIf="activeGroup() === 'http'">
           <button class="sub-tab-btn" [class.active]="activeSubTab() === 0" (click)="setActiveSubTab(0)">
-            🔄 Load & Edit
+            🔄 Cargar y Editar
           </button>
           <button class="sub-tab-btn" [class.active]="activeSubTab() === 1" (click)="setActiveSubTab(1)">
-            ⚙️ Mock Config
+            ⚙️ Configurar
           </button>
           <button class="sub-tab-btn" [class.active]="activeSubTab() === 2" (click)="setActiveSubTab(2)">
-            📋 Headers
+            📋 Cabeceras
           </button>
           <button class="sub-tab-btn" [class.active]="activeSubTab() === 3" (click)="setActiveSubTab(3)">
-            📄 Body
+            📄 Cuerpo
           </button>
         </div>
 
@@ -185,7 +185,6 @@
             <small class="field-help">Determina si la aplicación principal debe usar datos simulados o llamadas HTTP reales</small>
           </div>
 
-
         </div>
 
         <!-- Sub-tab 1: Database Management -->
@@ -197,43 +196,43 @@
 
           <!-- Database Statistics -->
           <div class="database-stats" *ngIf="databaseStatus().exists">
-            <h5>📊 Database Statistics</h5>
+            <h5>📊 Estadísticas de Base de Datos</h5>
             <div class="stats-grid">
               <div class="stat-item">
-                <span class="stat-label">Database Name:</span>
-                <span class="stat-value">{{ databaseConfig()?.name || 'Unknown' }}</span>
+                <span class="stat-label">Nombre de Base de Datos:</span>
+                <span class="stat-value">{{ databaseConfig()?.name || 'Desconocido' }}</span>
               </div>
               <div class="stat-item">
-                <span class="stat-label">Version:</span>
-                <span class="stat-value">{{ databaseConfig()?.version || 'Unknown' }}</span>
+                <span class="stat-label">Versión:</span>
+                <span class="stat-value">{{ databaseConfig()?.version || 'Desconocido' }}</span>
               </div>
               <div class="stat-item">
-                <span class="stat-label">Object Store:</span>
-                <span class="stat-value">{{ databaseConfig()?.objectStoreName || 'Unknown' }}</span>
+                <span class="stat-label">Almacén de Objetos:</span>
+                <span class="stat-value">{{ databaseConfig()?.objectStoreName || 'Desconocido' }}</span>
               </div>
               <div class="stat-item">
-                <span class="stat-label">Status:</span>
+                <span class="stat-label">Estado:</span>
                 <span class="status-badge" [class.status-ok]="databaseStatus().isInitialized">
-                  {{ databaseStatus().isInitialized ? '✅ Ready' : '⚠️ Not Initialized' }}
+                  {{ databaseStatus().isInitialized ? '✅ Listo' : '⚠️ No Inicializado' }}
                 </span>
               </div>
               <div class="stat-item">
-                <span class="stat-label">Total Records:</span>
+                <span class="stat-label">Registros Totales:</span>
                 <span class="stat-value">{{ statistics()?.totalMocks || 0 }}</span>
               </div>
               <div class="stat-item">
-                <span class="stat-label">Active Services:</span>
+                <span class="stat-label">Servicios Activos:</span>
                 <span class="stat-value">{{ statistics()?.mostUsedServiceCodes?.length || 0 }}</span>
               </div>
               <div class="stat-item">
-                <span class="stat-label">Average Delay:</span>
+                <span class="stat-label">Retraso Promedio:</span>
                 <span class="stat-value">{{ statistics()?.averageDelayMs || 0 }}ms</span>
               </div>
             </div>
 
             <!-- Services List -->
             <div class="services-overview" *ngIf="statistics()?.mostUsedServiceCodes?.length > 0">
-              <h6>🔧 Active Services:</h6>
+              <h6>🔧 Servicios Activos:</h6>
               <div class="service-tags">
                 <span class="service-tag" *ngFor="let service of statistics()?.mostUsedServiceCodes || []">
                   {{ service | json }}
@@ -244,56 +243,43 @@
 
           <!-- Database Operations -->
           <div class="database-operations">
-            <h5>⚙️ Database Operations</h5>
+            <h5>⚙️ Operaciones de Base de Datos</h5>
             
             <div class="operation-item">
               <div class="operation-info">
-                <strong>🔄 Refresh Statistics</strong>
-                <p>Update database statistics and reload current information</p>
+                <strong>🔄 Actualizar Estadísticas</strong>
+                <p>Actualizar estadísticas de base de datos y recargar información actual</p>
               </div>
               <div class="operation-controls">
-                <button class="btn btn-secondary" (click)="refreshDatabaseStats()" [disabled]="isLoading()">
-                  {{ isLoading() ? '⏳ Refreshing...' : '🔄 Refresh Stats' }}
+                <button class="btn btn-secondary standard-width" (click)="refreshDatabaseStats()" [disabled]="isLoading()">
+                  {{ isLoading() ? '⏳ Actualizando...' : '🔄 Actualizar' }}
                 </button>
               </div>
             </div>
 
             <div class="operation-item">
               <div class="operation-info">
-                <strong>🧹 Clean Database</strong>
-                <p>Remove orphaned records and optimize database storage</p>
+                <strong>🔄 Reiniciar Datos</strong>
+                <p>Borra la información almacenada y actualiza estadísticas de la base de datos</p>
               </div>
               <div class="operation-controls">
-                <button class="btn btn-secondary" (click)="cleanDatabase()" 
+                <button class="btn btn-secondary standard-width" (click)="reinitializeDatabase()" 
                   [disabled]="!databaseStatus().exists || isLoading()">
-                  {{ isLoading() ? '⏳ Cleaning...' : '🧹 Clean Database' }}
-                </button>
-              </div>
-            </div>
-
-            <div class="operation-item">
-              <div class="operation-info">
-                <strong>🔄 Recreate Database</strong>
-                <p>Delete current database and create a new one with fresh configuration</p>
-              </div>
-              <div class="operation-controls">
-                <button class="btn btn-warning" (click)="recreateDatabase()" 
-                  [disabled]="!databaseStatus().exists || isLoading()">
-                  {{ isLoading() ? '⏳ Recreating...' : '🔄 Recreate' }}
+                  {{ isLoading() ? '⏳ Reiniciando...' : '🔄 Reiniciar' }}
                 </button>
               </div>
             </div>
 
             <div class="operation-item danger-zone">
               <div class="operation-info">
-                <strong>🗑️ Force Delete Database</strong>
-                <p>Permanently remove the entire database and all its contents for forced reset</p>
-                <small class="warning-text">⚠️ This action cannot be undone and will force a complete reset!</small>
+                <strong>🗑️ Forzar Eliminación de Base de Datos</strong>
+                <p>Eliminar permanentemente toda la base de datos y todo su contenido para un reinicio forzado</p>
+                <small class="warning-text">⚠️ ¡Esta acción no se puede deshacer y forzará un reinicio completo!</small>
               </div>
               <div class="operation-controls">
-                <button class="btn btn-danger" (click)="confirmDeleteDatabase()" 
+                <button class="btn btn-danger standard-width" (click)="confirmDeleteDatabase()" 
                   [disabled]="!databaseStatus().exists || isLoading()">
-                  {{ isLoading() ? '⏳ Processing...' : '🗑️ Force Delete' }}
+                  {{ isLoading() ? '⏳ Procesando...' : '🗑️ Forzar' }}
                 </button>
               </div>
             </div>
@@ -302,21 +288,21 @@
           <!-- Database Not Available -->
           <div class="empty-state" *ngIf="!databaseStatus().exists">
             <span class="empty-icon">🗃️</span>
-            <p>Database is not available or not initialized.</p>
-            <small>💡 Create a new database from the setup panel to enable management features.</small>
+            <p>La base de datos no está disponible o no ha sido inicializada.</p>
+            <small>💡 Cree una nueva base de datos desde el panel de configuración para habilitar las funciones de gestión.</small>
           </div>
 
           <!-- Confirmation Dialog -->
           <div class="confirmation-overlay" *ngIf="showDeleteConfirmation">
             <div class="confirmation-dialog">
-              <h5>⚠️ Confirm Force Database Deletion</h5>
-              <p>Are you sure you want to <strong>permanently delete</strong> the database 
+              <h5>⚠️ Confirmar Eliminación Forzada de Base de Datos</h5>
+              <p>¿Está seguro de que desea <strong>eliminar permanentemente</strong> la base de datos 
                 <strong>{{ databaseConfig()?.name }}</strong>?</p>
-              <p class="warning-text">This will remove all mocks, configuration, and force a complete system reset.</p>
+              <p class="warning-text">Esto eliminará todos los mocks, la configuración y forzará un reinicio completo del sistema.</p>
               <div class="dialog-actions">
-                <button class="btn btn-secondary" (click)="cancelDeleteDatabase()">Cancel</button>
+                <button class="btn btn-secondary" (click)="cancelDeleteDatabase()">Cancelar</button>
                 <button class="btn btn-danger" (click)="executeDeleteDatabase()">
-                  🗑️ Force Delete Database
+                  🗑️ Forzar Eliminación de Base de Datos
                 </button>
               </div>
             </div>
@@ -330,17 +316,17 @@
         <!-- Sub-tab 0: Load & Edit -->
         <div class="sub-tab-content" *ngIf="activeSubTab() === 0">
           <div class="section-header">
-            <h4>🔄 Load & Edit Models</h4>
-            <p>Load existing models by ID or Service Code for seamless editing</p>
+            <h4>🔄 Cargar y Editar Modelos</h4>
+            <p>Cargar modelos existentes por Código de Servicio para editarlos fácilmente</p>
           </div>
 
           <div class="form-group">
-            <label for="serviceCodeSelect">Seleccionar Service Code:</label>
+            <label for="serviceCodeSelect">Seleccionar Código de Servicio:</label>
             <select id="serviceCodeSelect" 
                     [(ngModel)]="selectedServiceCodeForLoad" 
                     (ngModelChange)="onServiceCodeSelectionChange($event)" 
                     class="form-select">
-              <option value="">-- Seleccione un Service Code --</option>
+              <option value="">-------------------------------------------------</option>
               <option *ngFor="let service of availableServiceCodes()" [value]="service.serviceCode">
                 {{ service.serviceCode }} ({{ service.mockCount }} mocks, {{ service.methods.join(', ') }})
               </option>
@@ -359,19 +345,12 @@
             </div>
           </div>
 
-          <div class="form-actions">
-            <button class="btn btn-secondary" (click)="loadAvailableServiceCodes()" 
-              [disabled]="isLoading()">
-              {{ isLoading() ? '⏳ Cargando...' : '🔄 Actualizar Lista' }}
-            </button>
-          </div>
-
           <!-- Current Mocks Display with Edit capabilities -->
           <div class="mocks-list" *ngIf="currentMocks().length > 0">
             <div class="list-header">
-              <h4>📋 Loaded Models ({{ currentMocks().length }})</h4>
+              <h4>📋 Modelos Cargados ({{ currentMocks().length }})</h4>
               <div class="list-actions">
-                <button class="btn btn-small btn-secondary" (click)="exportMocks()" title="Export current models">
+                <button class="btn btn-small btn-secondary" (click)="exportMocks()" title="Exportar modelos actuales">
                   📤 Export
                 </button>
               </div>
@@ -383,17 +362,17 @@
                 </span>
                 <span class="mock-name">{{ mock.name }}</span>
                 <div class="mock-actions">
-                  <button class="btn-edit" (click)="editMock(mock)" title="Edit Mock">
+                  <button class="btn-edit" (click)="editMock(mock)" title="Editar Mock">
                     ✏️
                   </button>
-                  <button class="btn-delete" (click)="deleteMock(mock.id!)" title="Delete Mock">
+                  <button class="btn-delete" (click)="deleteMock(mock.id!)" title="Eliminar Mock">
                     🗑️
                   </button>
                 </div>
               </div>
               <div class="mock-details">
                 <div class="mock-url">{{ mock.url }}</div>
-                <div class="mock-service">Service: {{ mock.serviceCode }}</div>
+                <div class="mock-service">Servicio: {{ mock.serviceCode }}</div>
                 <div class="mock-id">ID: {{ mock.id }}</div>
               </div>
             </div>
@@ -401,41 +380,41 @@
 
           <div class="empty-state" *ngIf="currentMocks().length === 0 && !isLoading()">
             <span class="empty-icon">📝</span>
-            <p>No models loaded. Enter a Service Code or Context ID to load existing models for editing.</p>
-            <small>💡 Tip: Use different identifiers to switch between model sets seamlessly</small>
+            <p>No hay modelos cargados. Ingrese un Código de Servicio para cargar modelos existentes y editarlos.</p>
+            <small>💡 Consejo: Use diferentes identificadores para cambiar entre conjuntos de modelos fácilmente</small>
           </div>
         </div>
 
         <!-- Sub-tab 1: Mock Config -->
         <div class="sub-tab-content" *ngIf="activeSubTab() === 1">
           <div class="section-header">
-            <h4>📝 HTTP Mock Configuration</h4>
-            <p>Define the basic properties of your HTTP mock</p>
+            <h4>📝 Configuración de HTTP Mock</h4>
+            <p>Define las propiedades básicas de tu HTTP mock</p>
           </div>
 
           <div class="form-group">
-            <label for="nameMock">Mock Name:</label>
-            <input id="nameMock" type="text" [(ngModel)]="nameMock" placeholder="Enter descriptive mock name..."
+            <label for="nameMock">Nombre del Mock:</label>
+            <input id="nameMock" type="text" [(ngModel)]="nameMock" placeholder="Ingrese un nombre descriptivo para el mock..."
               class="form-input">
-            <small class="field-help">A descriptive name to identify this mock</small>
+            <small class="field-help">Un nombre descriptivo para identificar este mock</small>
           </div>
 
           <div class="form-group">
-            <label for="serviceCodeMock">Service Code:</label>
-            <input id="serviceCodeMock" type="text" [(ngModel)]="serviceCode" placeholder="Enter service identifier..."
+            <label for="serviceCodeMock">Código de Servicio:</label>
+            <input id="serviceCodeMock" type="text" [(ngModel)]="serviceCode" placeholder="Ingrese el identificador del servicio..."
               class="form-input">
-            <small class="field-help">Groups related mocks under the same service identifier</small>
+            <small class="field-help">Agrupa mocks relacionados bajo el mismo identificador de servicio</small>
           </div>
 
           <div class="form-group">
-            <label for="url">Request URL:</label>
-            <input id="url" type="text" [(ngModel)]="url" placeholder="Enter the URL to mock..." class="form-input">
-            <small class="field-help">The complete URL path that will be intercepted</small>
+            <label for="url">URL de Solicitud:</label>
+            <input id="url" type="text" [(ngModel)]="url" placeholder="Ingrese la URL a simular..." class="form-input">
+            <small class="field-help">La ruta URL completa que será interceptada</small>
           </div>
 
           <div class="form-row">
             <div class="form-group flex-1">
-              <label for="httpMethod">HTTP Method:</label>
+              <label for="httpMethod">Método HTTP:</label>
               <select id="httpMethod" [(ngModel)]="httpMethod" class="form-select">
                 <option *ngFor="let method of httpMethods" [value]="method">
                   {{ method }}
@@ -444,7 +423,7 @@
             </div>
 
             <div class="form-group flex-1">
-              <label for="httpCode">Response Code:</label>
+              <label for="httpCode">Código de Respuesta:</label>
               <select id="httpCode" [(ngModel)]="httpCodeResponseValue" class="form-select">
                 <option *ngFor="let code of httpCodeResponse" [value]="code">
                   {{ code }}
@@ -454,17 +433,17 @@
           </div>
 
           <div class="form-group">
-            <label for="delay">Response Delay (ms):</label>
+            <label for="delay">Retraso de Respuesta (ms):</label>
             <input id="delay" type="number" [value]="delayMs" (input)="onInputNumber($event, 'delayMs')" min="0"
               class="form-input">
-            <small class="field-help">Simulate network latency (0 = instant response)</small>
+            <small class="field-help">Simula la latencia de la red (0 = respuesta instantánea)</small>
           </div>
 
           <!-- Save actions for Mock Config -->
           <div class="form-actions">
             <button class="btn btn-success" (click)="saveContext()"
               [disabled]="!nameMock.trim() || !url.trim() || isLoading()">
-              {{ isLoading() ? '⏳ Saving...' : '💾 Save Mock' }}
+              {{ isLoading() ? '⏳ Guardando...' : '💾 Guardar Configuración' }}
             </button>
           </div>
         </div>
@@ -472,8 +451,8 @@
         <!-- Sub-tab 2: Headers -->
         <div class="sub-tab-content" *ngIf="activeSubTab() === 2">
           <div class="section-header">
-            <h4>📋 HTTP Response Headers</h4>
-            <p>Configure custom headers for the mock response</p>
+            <h4>📋 Cabeceras de Respuesta HTTP</h4>
+            <p>Configura cabeceras personalizadas para la respuesta del mock</p>
           </div>
 
           <!-- Add New Header -->
@@ -482,9 +461,9 @@
               <h5>➕ Cabeceras</h5>
             </div>
             <div class="form-row">
-              <input type="text" [(ngModel)]="newHeaderKey" placeholder="Header name (e.g., Content-Type)..."
+              <input type="text" [(ngModel)]="newHeaderKey" placeholder="Nombre de cabecera (ej. Content-Type)..."
                 class="form-input flex-1" (keydown.enter)="addHeader()">
-              <input type="text" [(ngModel)]="newHeaderValue" placeholder="Header value..." class="form-input flex-1"
+              <input type="text" [(ngModel)]="newHeaderValue" placeholder="Valor de cabecera..." class="form-input flex-1"
                 (keydown.enter)="addHeader()">
               <button class="btn btn-primary" (click)="addHeader()" [disabled]="!newHeaderKey().trim()">
                 <span class="icon-white">＋</span>
@@ -494,29 +473,138 @@
 
           <!-- Current Headers -->
           <div class="headers-list" *ngIf="getHeaderKeys().length > 0">
-            <h5>📋 Configured Headers ({{ getHeaderKeys().length }})</h5>
+            <h5>📋 Cabeceras Configuradas ({{ getHeaderKeys().length }})</h5>
             <div class="header-item" *ngFor="let key of getHeaderKeys()">
               <div class="header-content">
                 <span class="header-key">{{ key }}:</span>
                 <span class="header-value">{{ headers[key] }}</span>
               </div>
-              <button class="btn-delete" (click)="removeHeader(key)" title="Remove Header">
+              <button class="btn-delete" (click)="removeHeader(key)" title="Eliminar Cabecera">
                 ❌
               </button>
             </div>
           </div>
 
+          <!-- Empty state message when no headers -->
           <div class="empty-state" *ngIf="getHeaderKeys().length === 0">
             <span class="empty-icon">📋</span>
-            <p>No headers configured yet.</p>
-            <small>💡 Common headers: Content-Type, Authorization, Cache-Control</small>
+            <p>No hay cabeceras configuradas aún.</p>
+          </div>
+
+          <!-- Common Headers Quick Add - Always visible -->
+          <div class="common-headers-section">
+            <h6 *ngIf="getHeaderKeys().length === 0">💡 Cabeceras Comunes (Click para agregar)</h6>
+            <h6 *ngIf="getHeaderKeys().length > 0">💡 Agregar Más Cabeceras Comunes</h6>
+            
+            <div class="common-headers-grid">
+              <button class="common-header-btn" 
+                      [class.disabled]="headers['Content-Type']"
+                      [disabled]="headers['Content-Type']"
+                      (click)="addCommonHeader('Content-Type', 'application/json')" 
+                      [title]="headers['Content-Type'] ? 'Content-Type ya está agregado' : 'Agregar Content-Type: application/json'">
+                <span class="header-name">Content-Type</span>
+                <span class="header-sample">application/json</span>
+                <span class="added-indicator" *ngIf="headers['Content-Type']">✓</span>
+              </button>
+              
+              <button class="common-header-btn" 
+                      [class.disabled]="headers['Authorization']"
+                      [disabled]="headers['Authorization']"
+                      (click)="addCommonHeader('Authorization', 'Bearer token')" 
+                      [title]="headers['Authorization'] ? 'Authorization ya está agregado' : 'Agregar Authorization: Bearer token'">
+                <span class="header-name">Authorization</span>
+                <span class="header-sample">Bearer token</span>
+                <span class="added-indicator" *ngIf="headers['Authorization']">✓</span>
+              </button>
+              
+              <button class="common-header-btn" 
+                      [class.disabled]="headers['Cache-Control']"
+                      [disabled]="headers['Cache-Control']"
+                      (click)="addCommonHeader('Cache-Control', 'no-cache')" 
+                      [title]="headers['Cache-Control'] ? 'Cache-Control ya está agregado' : 'Agregar Cache-Control: no-cache'">
+                <span class="header-name">Cache-Control</span>
+                <span class="header-sample">no-cache</span>
+                <span class="added-indicator" *ngIf="headers['Cache-Control']">✓</span>
+              </button>
+              
+              <button class="common-header-btn" 
+                      [class.disabled]="headers['Accept']"
+                      [disabled]="headers['Accept']"
+                      (click)="addCommonHeader('Accept', 'application/json')" 
+                      [title]="headers['Accept'] ? 'Accept ya está agregado' : 'Agregar Accept: application/json'">
+                <span class="header-name">Accept</span>
+                <span class="header-sample">application/json</span>
+                <span class="added-indicator" *ngIf="headers['Accept']">✓</span>
+              </button>
+              
+              <button class="common-header-btn" 
+                      [class.disabled]="headers['User-Agent']"
+                      [disabled]="headers['User-Agent']"
+                      (click)="addCommonHeader('User-Agent', 'MyApp/1.0')" 
+                      [title]="headers['User-Agent'] ? 'User-Agent ya está agregado' : 'Agregar User-Agent: MyApp/1.0'">
+                <span class="header-name">User-Agent</span>
+                <span class="header-sample">MyApp/1.0</span>
+                <span class="added-indicator" *ngIf="headers['User-Agent']">✓</span>
+              </button>
+              
+              <button class="common-header-btn" 
+                      [class.disabled]="headers['Accept-Language']"
+                      [disabled]="headers['Accept-Language']"
+                      (click)="addCommonHeader('Accept-Language', 'es-ES,en;q=0.9')" 
+                      [title]="headers['Accept-Language'] ? 'Accept-Language ya está agregado' : 'Agregar Accept-Language: es-ES,en;q=0.9'">
+                <span class="header-name">Accept-Language</span>
+                <span class="header-sample">es-ES,en;q=0.9</span>
+                <span class="added-indicator" *ngIf="headers['Accept-Language']">✓</span>
+              </button>
+              
+              <button class="common-header-btn" 
+                      [class.disabled]="headers['Origin']"
+                      [disabled]="headers['Origin']"
+                      (click)="addCommonHeader('Origin', 'https://example.com')" 
+                      [title]="headers['Origin'] ? 'Origin ya está agregado' : 'Agregar Origin: https://example.com'">
+                <span class="header-name">Origin</span>
+                <span class="header-sample">https://example.com</span>
+                <span class="added-indicator" *ngIf="headers['Origin']">✓</span>
+              </button>
+              
+              <button class="common-header-btn" 
+                      [class.disabled]="headers['Referer']"
+                      [disabled]="headers['Referer']"
+                      (click)="addCommonHeader('Referer', 'https://example.com/page')" 
+                      [title]="headers['Referer'] ? 'Referer ya está agregado' : 'Agregar Referer: https://example.com/page'">
+                <span class="header-name">Referer</span>
+                <span class="header-sample">https://example.com/page</span>
+                <span class="added-indicator" *ngIf="headers['Referer']">✓</span>
+              </button>
+              
+              <button class="common-header-btn" 
+                      [class.disabled]="headers['X-Requested-With']"
+                      [disabled]="headers['X-Requested-With']"
+                      (click)="addCommonHeader('X-Requested-With', 'XMLHttpRequest')" 
+                      [title]="headers['X-Requested-With'] ? 'X-Requested-With ya está agregado' : 'Agregar X-Requested-With: XMLHttpRequest'">
+                <span class="header-name">X-Requested-With</span>
+                <span class="header-sample">XMLHttpRequest</span>
+                <span class="added-indicator" *ngIf="headers['X-Requested-With']">✓</span>
+              </button>
+              
+              <button class="common-header-btn" 
+                      [class.disabled]="headers['Access-Control-Allow-Origin']"
+                      [disabled]="headers['Access-Control-Allow-Origin']"
+                      (click)="addCommonHeader('Access-Control-Allow-Origin', '*')" 
+                      [title]="headers['Access-Control-Allow-Origin'] ? 'CORS-Origin ya está agregado' : 'Agregar Access-Control-Allow-Origin: *'">
+                <span class="header-name">CORS-Origin</span>
+                <span class="header-sample">*</span>
+                <span class="added-indicator" *ngIf="headers['Access-Control-Allow-Origin']">✓</span>
+              </button>
+            </div>
+            <small class="help-text">💡 Haz click en cualquier cabecera para agregarla automáticamente con un valor por defecto</small>
           </div>
 
           <!-- Save actions for Headers -->
           <div class="form-actions">
             <button class="btn btn-success" (click)="saveContext()"
               [disabled]="!nameMock.trim() || !url.trim() || isLoading()">
-              {{ isLoading() ? '⏳ Saving...' : '💾 Save Mock' }}
+              {{ isLoading() ? '⏳ Guardando...' : '💾 Guardar Cabecera' }}
             </button>
           </div>
         </div>
@@ -524,15 +612,62 @@
         <!-- Sub-tab 3: Body -->
         <div class="sub-tab-content" *ngIf="activeSubTab() === 3">
           <div class="section-header">
-            <h4>📄HTTP Body</h4>
+            <h4>📄Cuerpo de respuesta</h4>
             <p>Defina los datos de respuesta JSON que se devolverán</p>
           </div>
 
-          <div class="form-group">
-            <label for="responseBody">Response JSON:</label>
-            <textarea id="responseBody" [(ngModel)]="responseBody"
-              placeholder='{"message": "Success", "data": [], "status": "ok"}' rows="15"
-              class="form-textarea"></textarea>
+          <div class="json-editor-group">
+            <!-- Enhanced JSON Editor Header -->
+            <div class="textarea-controls">
+              <div class="editor-label">
+                <span class="json-icon">📄</span>
+                <span>JSON de Respuesta:</span>
+              </div>
+              <div class="editor-actions">
+                <button type="button" class="editor-btn" (click)="formatJson()" title="Formatear JSON">
+                  🎨 Format
+                </button>
+                <button type="button" class="editor-btn" (click)="validateJson()" title="Validar JSON">
+                  ✅ Validate
+                </button>
+              </div>
+            </div>
+            
+            <!-- Professional JSON Editor Container -->
+            <div class="json-editor-container">
+              <textarea id="responseBody" 
+                        [(ngModel)]="responseBody"
+                        placeholder='{"message": "Success", "data": [], "status": "ok"}' 
+                        rows="15"
+                        class="form-textarea"
+                        [class.json-error]="jsonValidationMessage()?.type === 'error'"
+                        [class.json-valid]="jsonValidationMessage()?.type === 'success'"
+                        spellcheck="false"
+                        autocomplete="off"
+                        autocorrect="off"
+                        autocapitalize="off"></textarea>
+            </div>
+            
+            <!-- JSON Editor Status Bar -->
+            <div class="json-editor-status">
+              <div class="status-left">
+                <div class="status-item" *ngIf="jsonValidationMessage()">
+                  <span class="status-dot" 
+                        [class.valid]="jsonValidationMessage()?.type === 'success'"
+                        [class.invalid]="jsonValidationMessage()?.type === 'error'"
+                        [class.neutral]="!jsonValidationMessage()"></span>
+                  <span>{{ jsonValidationMessage()?.type === 'success' ? 'JSON Válido' : 
+                            jsonValidationMessage()?.type === 'error' ? 'JSON Inválido' : 'Sin validar' }}</span>
+                </div>
+                <div class="status-item">
+                  <span>Formato: JSON</span>
+                </div>
+              </div>
+              <div class="status-right">
+                <span class="char-count">{{ responseBody.length || 0 }} caracteres</span>
+              </div>
+            </div>
+            
             <small class="field-help">Ingrese un JSON válido que se devolverá como respuesta simulada</small>
           </div>
 
@@ -543,20 +678,11 @@
             {{ jsonValidationMessage()?.text }}
           </div>
 
-          <div class="body-tools">
-            <button class="btn btn-secondary" (click)="formatJson()" title="Format JSON">
-              🎨 Format JSON
-            </button>
-            <button class="btn btn-secondary" (click)="validateJson()" title="Validate JSON">
-              ✅ Validate
-            </button>
-          </div>
-
           <!-- Save actions for Body -->
           <div class="form-actions">
             <button class="btn btn-success" (click)="saveContext()"
               [disabled]="!nameMock.trim() || !url.trim() || isLoading()">
-              {{ isLoading() ? '⏳ Saving...' : '💾 Save Mock' }}
+              {{ isLoading() ? '⏳ Guardando...' : '💾 Guardar Cuerpo' }}
             </button>
           </div>
         </div>
@@ -570,84 +696,98 @@
         <!-- Sub-tab 0: Export & Import -->
         <div class="sub-tab-content" *ngIf="activeSubTab() === 0">
           <div class="section-header">
-            <h4>📤 Data Export & Import</h4>
-            <p>Transport your mock configurations between projects and environments</p>
+            <h4>📤 Exportar e Importar Datos</h4>
+            <p>Transfiera sus configuraciones de mock entre proyectos y entornos</p>
           </div>
 
           <!-- Export Section -->
           <div class="export-section">
-            <h5>📤 Export Options</h5>
+            <h5>📤 Opciones de Exportación</h5>
 
             <div class="export-option">
               <div class="option-info">
-                <strong>📄 Configuration Export</strong>
-                <p>Export current database configuration (structure only)</p>
+                <strong>📄 Exportar Configuración</strong>
+                <p>Exportar la configuración actual de la base de datos (solo estructura)</p>
               </div>
               <button class="btn btn-primary" (click)="downloadConfig()">
-                📥 Download Config
+                📅 Descargar Config
               </button>
             </div>
 
             <div class="export-option">
               <div class="option-info">
-                <strong>📋 Service Mocks Export</strong>
-                <p>Export all mocks for the current service code</p>
+                <strong>📋 Exportar Mocks de Servicio</strong>
+                <p>Exportar todos los mocks del código de servicio actual</p>
               </div>
               <button class="btn btn-primary" (click)="exportMocks()" [disabled]="!serviceCode.trim()">
-                📤 Export Service Mocks
+                📤 Exportar Mocks de Servicio
               </button>
             </div>
 
             <div class="export-option">
               <div class="option-info">
-                <strong>🗃️ Complete Database Export</strong>
-                <p>Export the entire database with all mocks and configuration</p>
+                <strong>🗜️ Exportar Base de Datos Completa</strong>
+                <p>Exportar toda la base de datos con todos los mocks y configuración</p>
               </div>
               <button class="btn btn-primary" (click)="exportCompleteDatabase()">
-                🏢 Export Complete DB
+                🏢 Exportar BD Completa
               </button>
             </div>
           </div>
 
           <!-- Import Section -->
           <div class="import-section">
-            <h5>📥 Import Options</h5>
+            <h5>📥 Opciones de Importación</h5>
 
             <div class="import-option">
               <div class="option-info">
-                <strong>📁 Import from File</strong>
-                <p>Load configuration or mocks from a JSON file</p>
+                <strong>📁 Importar desde Archivo</strong>
+                <p>Cargar configuración o mocks desde un archivo JSON</p>
               </div>
               <div class="import-controls">
                 <input #fileInput type="file" accept=".json" (change)="onFileSelected($event)" class="file-input">
                 <button class="btn btn-secondary" (click)="fileInput.click()">
-                  📁 Select File
+                  📁 Seleccionar Archivo
                 </button>
               </div>
             </div>
 
             <div class="import-option">
               <div class="option-info">
-                <strong>🔄 Merge Strategy</strong>
-                <p>Choose how to handle conflicts during import</p>
+                <strong>🔄 Estrategia de Fusión</strong>
+                <p>Elija cómo manejar conflictos durante la importación</p>
               </div>
               <div class="merge-controls">
                 <select class="form-select" [(ngModel)]="mergeStrategy">
-                  <option value="replace">Replace existing</option>
-                  <option value="merge">Merge with existing</option>
-                  <option value="skip">Skip duplicates</option>
+                  <option value="replace">Reemplazar existentes</option>
+                  <option value="merge">Fusionar con existentes</option>
+                  <option value="skip">Omitir duplicados</option>
                 </select>
               </div>
             </div>
           </div>
         </div>
-
-
-
       </div>
 
     </div> <!-- Cierre de management tabs -->
 
+  </div>
+
+  <!-- Save Confirmation Dialog - Global Level -->
+  <div class="confirmation-overlay" *ngIf="showSaveConfirmation">
+    <div class="confirmation-dialog save-confirmation">
+      <h5>✅ Mock Guardado Exitosamente</h5>
+      <p>El mock <strong>"{{ nameMock }}"</strong> se ha guardado correctamente.</p>
+      <p class="info-text">¿Qué deseas hacer a continuación?</p>
+      <div class="dialog-actions">
+        <button class="btn btn-secondary" (click)="continueEditing()">
+          📝 Continuar Editando
+        </button>
+        <button class="btn btn-primary" (click)="createNewRecord()">
+          ➕ Crear Nuevo Mock
+        </button>
+      </div>
+    </div>
   </div>
 
 </div>

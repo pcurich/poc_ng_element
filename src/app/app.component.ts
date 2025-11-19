@@ -4,7 +4,7 @@ import { CustomElementComponent, HttpMockManagerComponent } from './components/i
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CustomElementComponent, HttpMockManagerComponent],
+  imports: [ HttpMockManagerComponent],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss']
 })

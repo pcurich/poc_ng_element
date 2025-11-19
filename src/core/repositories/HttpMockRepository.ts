@@ -263,6 +263,14 @@ export class HttpMockRepository extends BaseRepository<HttpMockEntity, string> {
   }
 
   /**
+   * Limpia todos los mocks de la base de datos de manera eficiente
+   * Utiliza el método clear() de IndexedDB para borrar todos los registros
+   */
+  async clearAllMocks(): Promise<void> {
+    await this.clearAll();
+  }
+
+  /**
    * Actualiza el delay de todos los mocks de un service code
    */
   async updateDelayByServiceCode(serviceCode: string, newDelayMs: number): Promise<number> {

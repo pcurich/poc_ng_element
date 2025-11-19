@@ -351,6 +351,20 @@ export class BaseRepository<TEntity extends BaseEntity<TKey>, TKey extends IDBVa
     });
   }
 
+  /**
+   * Clears all records from the object store efficiently using IndexedDB's clear() method
+   * @returns Promise that resolves when all records are cleared
+   */
+  async clearAll(): Promise<void> {
+    return this.dbContext.runTransaction(this.tableName, 'readwrite', (store: IDBObjectStore) => {
+      const request = store.clear();
+      return new Promise<void>((resolve, reject) => {
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(new Error(`Failed to clear object store: ${request.error?.message}`));
+      });
+    });
+  }
+
   // 💾 SAVE Operations
   async save(entity: TEntity): Promise<TEntity> {
     if (entity.id && await this.exists(entity.id)) {

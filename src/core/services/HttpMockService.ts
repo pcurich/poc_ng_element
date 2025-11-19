@@ -606,6 +606,33 @@ export class HttpMockService {
     );
   }
 
+  /**
+   * Clears all mocks from the database efficiently
+   * Uses IndexedDB's clear() method to remove all records at once
+   */
+  async clearAllMocks(): Promise<void> {
+    return await this.executeWithErrorHandling(
+      async () => {
+        await this.httpMockRepository.clearAllMocks();
+        
+        // Reset state after clearing
+        this.updateState(state => ({
+          ...state,
+          mocks: [],
+          statistics: null,
+          selectedServiceCode: null,
+          lastUpdated: new Date(),
+          error: null
+        }));
+
+        // Update statistics to reflect empty state
+        await this.updateStatistics();
+      },
+      'Failed to clear all mocks',
+      undefined
+    );
+  }
+
   // ==========================================================================
   // PRIVATE HELPER METHODS
   // ==========================================================================
