@@ -1,9 +1,9 @@
 <!-- 🌐 Http Mock Manager - Interfaz gráfica estilo chat flotante -->
 <div class="http-mock-manager" [style.bottom.px]="position().bottom" [style.right.px]="position().right"
-  [class.visible]="showForm()" [class.hidden]="!showForm()">
+  [class.visible]="showForm()" [class.hidden]="!showForm()" (mousedown)="startDrag($event)">
 
   <!-- Header con drag handle y controles -->
-  <div class="header" (mousedown)="startDrag($event)">
+  <div class="header">
     <div class="header-title">
       <span class="icon">🌐</span>
       <span>HTTP Mock Manager</span>
@@ -185,33 +185,7 @@
             <small class="field-help">Determina si la aplicación principal debe usar datos simulados o llamadas HTTP reales</small>
           </div>
 
-          <!-- Statistics Display -->
-          <div class="statistics" *ngIf="statistics()">
-            <h4>📊 Current Statistics</h4>
-            <div class="stats-grid">
-              <div class="stat-item">
-                <span class="stat-label">Total Mocks:</span>
-                <span class="stat-value">{{ statistics()!.totalMocks }}</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">Avg Delay:</span>
-                <span class="stat-value">{{ statistics()!.averageDelayMs }}ms</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">Active Services:</span>
-                <span class="stat-value">{{ statistics()!.mostUsedServiceCodes.length }}</span>
-              </div>
-            </div>
 
-            <div class="service-list" *ngIf="statistics()!.mostUsedServiceCodes.length > 0">
-              <h5>🔧 Most Used Services:</h5>
-              <div class="service-tags">
-                <span class="service-tag" *ngFor="let service of statistics()!.mostUsedServiceCodes">
-                  {{ service }}
-                </span>
-              </div>
-            </div>
-          </div>
         </div>
 
         <!-- Sub-tab 1: Database Management -->
@@ -243,26 +217,26 @@
                   {{ databaseStatus().isInitialized ? '✅ Ready' : '⚠️ Not Initialized' }}
                 </span>
               </div>
-              <div class="stat-item" *ngIf="statistics()">
+              <div class="stat-item">
                 <span class="stat-label">Total Records:</span>
-                <span class="stat-value">{{ statistics()!.totalMocks }}</span>
+                <span class="stat-value">{{ statistics()?.totalMocks || 0 }}</span>
               </div>
-              <div class="stat-item" *ngIf="statistics()">
+              <div class="stat-item">
                 <span class="stat-label">Active Services:</span>
-                <span class="stat-value">{{ statistics()!.mostUsedServiceCodes.length }}</span>
+                <span class="stat-value">{{ statistics()?.mostUsedServiceCodes?.length || 0 }}</span>
               </div>
-              <div class="stat-item" *ngIf="statistics()">
+              <div class="stat-item">
                 <span class="stat-label">Average Delay:</span>
-                <span class="stat-value">{{ statistics()!.averageDelayMs }}ms</span>
+                <span class="stat-value">{{ statistics()?.averageDelayMs || 0 }}ms</span>
               </div>
             </div>
 
             <!-- Services List -->
-            <div class="services-overview" *ngIf="statistics()?.mostUsedServiceCodes.length > 0">
+            <div class="services-overview" *ngIf="statistics()?.mostUsedServiceCodes?.length > 0">
               <h6>🔧 Active Services:</h6>
               <div class="service-tags">
-                <span class="service-tag" *ngFor="let service of statistics()!.mostUsedServiceCodes">
-                  {{ service }}
+                <span class="service-tag" *ngFor="let service of statistics()?.mostUsedServiceCodes || []">
+                  {{ service | json }}
                 </span>
               </div>
             </div>
@@ -361,16 +335,10 @@
           </div>
 
           <div class="form-group">
-            <label for="contextId">Context ID:</label>
-            <input id="contextId" type="number" [value]="contextId" (input)="onInputNumber($event, 'contextId')" min="1"
-              placeholder="Enter context ID to load and edit..." class="form-input">
-          </div>
-
-          <div class="form-group">
             <label for="serviceCodeSelect">Seleccionar Service Code:</label>
             <select id="serviceCodeSelect" 
-                    [value]="selectedServiceCodeForLoad()" 
-                    (change)="onServiceCodeSelectionChange($any($event.target).value)" 
+                    [(ngModel)]="selectedServiceCodeForLoad" 
+                    (ngModelChange)="onServiceCodeSelectionChange($event)" 
                     class="form-select">
               <option value="">-- Seleccione un Service Code --</option>
               <option *ngFor="let service of availableServiceCodes()" [value]="service.serviceCode">
@@ -395,10 +363,6 @@
             <button class="btn btn-secondary" (click)="loadAvailableServiceCodes()" 
               [disabled]="isLoading()">
               {{ isLoading() ? '⏳ Cargando...' : '🔄 Actualizar Lista' }}
-            </button>
-
-            <button class="btn btn-primary" (click)="loadContextById()" [disabled]="isLoading()">
-              {{ isLoading() ? '⏳ Loading...' : '🎯 Load by Context ID' }}
             </button>
           </div>
 

@@ -38,13 +38,37 @@
     box-shadow: var(--shadow);
     font-size: var(--font-md);
     z-index: 9999;
-    transition: var(--transition);
     overflow: hidden;
+    cursor: grab;
     
-    // Optimizaciones para drag & drop performance
+    // Optimizaciones máximas para drag & drop performance
     will-change: transform, bottom, right;
-    transform: translateZ(0); // Force hardware acceleration
+    transform: translate3d(0, 0, 0); // Force GPU acceleration
     backface-visibility: hidden;
+    perspective: 1000px; // Enable 3D rendering context
+    transform-style: preserve-3d;
+    
+    // Disable smooth transitions during drag for better performance
+    &:not(.dragging) {
+        transition: var(--transition);
+    }
+    
+    // Cuando está siendo arrastrado
+    &.dragging {
+        transition: none;
+        pointer-events: none; // Improve drag performance
+        user-select: none;
+        
+        // Subpixel rendering optimization
+        transform-origin: top left;
+        image-rendering: optimizeSpeed;
+        image-rendering: -moz-crisp-edges;
+        image-rendering: -webkit-optimize-contrast;
+    }
+
+    &:active {
+        cursor: grabbing;
+    }
 
     &.hidden {
         height: 48px;
@@ -52,6 +76,18 @@
 
     &.visible {
         min-height: 480px;
+    }
+
+    // Restaurar cursor normal para elementos interactivos
+    button, input, select, textarea, a,
+    .btn, .form-input, .form-select, .form-textarea,
+    .control-btn, .sub-tab-btn, .group-btn {
+        cursor: pointer;
+        pointer-events: auto; // Ensure interactive elements work during drag
+        
+        &:active {
+            cursor: pointer;
+        }
     }
 }
 
@@ -64,13 +100,8 @@
     padding: var(--space-md) var(--space-lg);
     background: var(--primary);
     color: white;
-    cursor: grab;
     user-select: none;
     touch-action: none; // Disable touch scrolling during drag
-    
-    &:active {
-        cursor: grabbing;
-    }
 }
 
 .header-title {

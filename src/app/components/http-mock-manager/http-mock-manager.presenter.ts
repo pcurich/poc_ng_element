@@ -11,7 +11,8 @@ import {
   IHttpMockManagerPresenterState,
   IHttpMockManagerPresenterEvents,
   DatabaseConfig,
-  DatabaseStatus 
+  DatabaseStatus,
+  ServiceCodeWithStats 
 } from '../interfaces';
 
 /**
@@ -41,7 +42,8 @@ export class HttpMockManagerPresenter implements OnDestroy {
   private readonly _statistics = signal<any | null>(null);
   private readonly _selectedServiceCode = signal<string | null>(null);
   private readonly _lastOperation = signal<string | null>(null);
-  private readonly _availableServiceCodes = signal<Array<{ serviceCode: string; mockCount: number; methods: string[] }>>([]);
+  private readonly _availableServiceCodes = signal<ServiceCodeWithStats[]>([]);
+
   
   // === Estado de la base de datos ===
   private readonly _databaseStatus = signal<DatabaseStatus>({
@@ -59,6 +61,7 @@ export class HttpMockManagerPresenter implements OnDestroy {
   public readonly selectedServiceCode = this._selectedServiceCode.asReadonly();
   public readonly lastOperation = this._lastOperation.asReadonly();
   public readonly availableServiceCodes = this._availableServiceCodes.asReadonly();
+
   
   // === Estado de la base de datos ===
   public readonly databaseStatus = this._databaseStatus.asReadonly();
@@ -117,9 +120,22 @@ export class HttpMockManagerPresenter implements OnDestroy {
       this._databaseStatus.set(dbStatus);
       
       if (!dbStatus.exists) {
-        // Si no existe, mostrar el formulario limpio (el usuario puede cargar config por defecto manualmente)
-        // await this.loadDefaultDatabaseConfig(); // Comentado: ahora es manual
-        this.setLastOperation('Database not found - setup required');
+        // Si no existe, cargar la configuración por defecto automáticamente
+        await this.loadDefaultDatabaseConfig();
+        
+        // Inicializar estadísticas vacías para que no aparezcan como undefined
+        this._statistics.set({
+          totalMocks: 0,
+          averageDelayMs: 0,
+          mostUsedServiceCodes: [],
+          methodDistribution: {},
+          statusCodeDistribution: {}
+        });
+        
+        // Inicializar lista de service codes vacía
+        this._availableServiceCodes.set([]);
+        
+        this.setLastOperation('Database not found - default configuration loaded');
         this._isInitialized.set(true);
         return;
       }
@@ -163,27 +179,6 @@ export class HttpMockManagerPresenter implements OnDestroy {
       this.setLastOperation('Context changed successfully');
     } catch (error) {
       const errorMessage = `Failed to change context: ${error instanceof Error ? error.message : 'Unknown error'}`;
-      this.setError(errorMessage);
-      this.error$.next(errorMessage);
-    } finally {
-      this.setLoading(false);
-    }
-  }
-
-  /**
-   * Carga un contexto por ID
-   */
-  async handleLoadContext(contextId: number): Promise<void> {
-    try {
-      this.setLoading(true);
-      this.setLastOperation(`Loading context with ID: ${contextId}`);
-
-      // Lógica para cargar contexto específico (puede expandirse según necesidades)
-      await this.refreshStatistics();
-      
-      this.setLastOperation('Context loaded successfully');
-    } catch (error) {
-      const errorMessage = `Failed to load context: ${error instanceof Error ? error.message : 'Unknown error'}`;
       this.setError(errorMessage);
       this.error$.next(errorMessage);
     } finally {
@@ -490,24 +485,49 @@ export class HttpMockManagerPresenter implements OnDestroy {
 
   // === Métodos de utilidad privados ===
 
-  private async refreshStatistics(): Promise<void> {
+  public async refreshStatistics(): Promise<void> {
     try {
       if (this.httpMockService) {
         const stats = this.httpMockService.statistics();
         this._statistics.set(stats);
         
+        console.log('📊 Statistics refreshed:', {
+          totalMocks: stats?.totalMocks || 0,
+          averageDelayMs: stats?.averageDelayMs || 0,
+          serviceCodesCount: stats?.mostUsedServiceCodes?.length || 0
+        });
+        
         // También actualizar la lista de service codes disponibles
         await this.refreshAvailableServiceCodes();
+      } else {
+        // Si no hay servicio, inicializar con estadísticas vacías
+        this._statistics.set({
+          totalMocks: 0,
+          averageDelayMs: 0,
+          mostUsedServiceCodes: [],
+          methodDistribution: {},
+          statusCodeDistribution: {}
+        });
+        
+        console.log('📊 Statistics initialized with empty values (no service available)');
       }
     } catch (error) {
       console.warn('Failed to refresh statistics:', error);
+      // En caso de error, establecer estadísticas vacías para evitar undefined
+      this._statistics.set({
+        totalMocks: 0,
+        averageDelayMs: 0,
+        mostUsedServiceCodes: [],
+        methodDistribution: {},
+        statusCodeDistribution: {}
+      });
     }
   }
 
   /**
    * Refresca la lista de códigos de servicio disponibles
    */
-  private async refreshAvailableServiceCodes(): Promise<void> {
+  public async refreshAvailableServiceCodes(): Promise<void> {
     try {
       if (this.httpMockService) {
         const serviceCodes = await this.httpMockService.getServiceCodesWithStats();
@@ -530,7 +550,6 @@ export class HttpMockManagerPresenter implements OnDestroy {
    * Verifica si la base de datos existe en IndexedDB
    */
   private async checkDatabaseExists(): Promise<DatabaseStatus> {
-    debugger;
     try {
       const config = ORMFactory.getDefaultHttpMocksConfig();
       
@@ -652,7 +671,7 @@ export class HttpMockManagerPresenter implements OnDestroy {
   /**
    * Carga la configuración por defecto de la base de datos para el formulario
    */
-  private async loadDefaultDatabaseConfig(): Promise<void> {
+  public async loadDefaultDatabaseConfig(): Promise<void> {
     try {
       const defaultConfig = ORMFactory.getDefaultHttpMocksConfig();
       
@@ -672,6 +691,14 @@ export class HttpMockManagerPresenter implements OnDestroy {
       this._databaseConfig.set(databaseConfig);
       this.setLastOperation('Default database configuration loaded');
       
+      console.log('📄 Database configuration loaded:', {
+        name: databaseConfig.name,
+        version: databaseConfig.version,
+        objectStoreName: databaseConfig.objectStoreName,
+        keyPath: databaseConfig.keyPath,
+        indexesCount: databaseConfig.indexes?.length || 0
+      });
+      
     } catch (error) {
       this.setError(`Failed to load default database configuration: ${error}`);
     }
@@ -682,6 +709,9 @@ export class HttpMockManagerPresenter implements OnDestroy {
    */
   private async initializeServices(): Promise<void> {
     try {
+      // Cargar configuración de la base de datos
+      await this.loadDefaultDatabaseConfig();
+      
       // Crear configuración y contexto de base de datos
       const config = ORMFactory.getDefaultHttpMocksConfig();
       const dbContext = ORMFactory.createDbContext(config);
@@ -694,6 +724,9 @@ export class HttpMockManagerPresenter implements OnDestroy {
 
       // Suscribirse a cambios del servicio
       this.subscribeToServiceChanges();
+      
+      // Actualizar estadísticas después de inicializar los servicios
+      await this.refreshStatistics();
       
       // Actualizar estado de la base de datos
       this._databaseStatus.update(status => ({
