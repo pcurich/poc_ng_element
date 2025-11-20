@@ -10,8 +10,8 @@ Este proyecto ha sido refactorizado para mejorar la **legibilidad** y **mantenib
 ```
 src/app/
 ├── app.component.ts                    # HTML y CSS inline
-└── custom-element/
-    └── custom-element.component.ts     # HTML y CSS inline
+└── http-mock-manager/              # Único custom element del proyecto
+    └── http-mock-manager.component.ts  # Componente principal
 ```
 
 ### Después (Archivos separados)
@@ -20,10 +20,11 @@ src/app/
 ├── app.component.ts                    # ✅ Solo lógica TypeScript
 ├── app.component.html                  # ✅ Template HTML separado
 ├── app.component.scss                  # ✅ Estilos SCSS separados
-└── custom-element/
-    ├── custom-element.component.ts     # ✅ Solo lógica TypeScript
-    ├── custom-element.component.html   # ✅ Template HTML separado
-    └── custom-element.component.scss   # ✅ Estilos SCSS separados
+└── http-mock-manager/
+    ├── http-mock-manager.component.ts     # ✅ Solo lógica TypeScript
+    ├── http-mock-manager.component.html   # ✅ Template HTML separado
+    ├── http-mock-manager.component.scss   # ✅ Estilos SCSS separados
+    └── http-mock-manager.presenter.ts     # ✅ Lógica de presentación
 ```
 
 ## 🎯 **Beneficios Obtenidos**
@@ -56,13 +57,14 @@ src/app/
 })
 ```
 
-### CustomElementComponent
+### HttpMockManagerComponent
 ```typescript
 @Component({
-  selector: 'app-custom-element',
+  selector: 'http-mock-manager',
   standalone: true,
-  templateUrl: './custom-element.component.html',  // ✅ HTML externo
-  styleUrls: ['./custom-element.component.scss']   // ✅ SCSS externo
+  templateUrl: './http-mock-manager.component.html',  // ✅ HTML externo
+  styleUrls: ['./http-mock-manager.component.scss'],  // ✅ SCSS externo
+  encapsulation: ViewEncapsulation.ShadowDom          // ✅ Shadow DOM
 })
 ```
 
@@ -221,7 +223,7 @@ dist/
 │   ├── main.js
 │   └── styles.css
 └── elements/
-    ├── my-custom-element.js    # 118KB
+    ├── http-mock-manager.js    # ~1.7MB (optimizado sin Zone.js)
     └── example.html
 ```
 

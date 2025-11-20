@@ -6,9 +6,18 @@
     "start": "ng serve",
     "build": "ng build",
     "build:elements": "ng build --configuration production && node concat.js",
+    "build:dev": "ng build --configuration development",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "serve:elements": "http-server dist -p 4200"
+    "serve:elements": "http-server dist -p 4200",
+    "clean": "rmdir /s /q dist .angular\\cache node_modules\\.cache 2>nul || echo Cache cleared",
+    "clean:dist": "rmdir /s /q dist 2>nul || echo Dist folder cleared",
+    "clean:cache": "rmdir /s /q .angular\\cache node_modules\\.cache 2>nul || echo Angular cache cleared",
+    "clean:install": "npm run clean && npm install",
+    "clean:build": "npm run clean:dist && npm run build:dev",
+    "clean:build:prod": "npm run clean:dist && npm run build",
+    "rebuild": "npm run clean:install && npm run build:dev",
+    "fresh-start": "npm run clean && npm install && npm run build:dev && npm start"
   },
   "private": true,
   "dependencies": {

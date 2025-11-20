@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { CustomElementComponent, HttpMockManagerComponent } from './components/index';
+import { HttpMockManagerComponent } from './components/index';
 
 @Component({
   selector: 'app-root',
