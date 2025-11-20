@@ -31,7 +31,7 @@ async function buildElements() {
   }
   
   // Concatenar archivos
-  const outputFile = path.join(outputPath, 'my-custom-element.js');
+  const outputFile = path.join(outputPath, 'http-mock-manager.js');
   
   // Leer y concatenar todos los archivos
   let concatenatedContent = '';
@@ -87,12 +87,12 @@ async function buildElements() {
         
         <div class="example-section">
             <h3>Ejemplo 1: Uso básico</h3>
-            <my-custom-element name="Pedro" message="¡Hola desde Angular Elements!"></my-custom-element>
+            <http-mock-manager></http-mock-manager>
         </div>
         
         <div class="example-section">
             <h3>Ejemplo 2: Diferentes propiedades</h3>
-            <my-custom-element name="Usuario" message="Este componente es reutilizable"></my-custom-element>
+            <http-mock-manager></http-mock-manager>
         </div>
         
         <div class="example-section">
@@ -103,7 +103,7 @@ async function buildElements() {
     </div>
 
     <!-- Cargar el custom element -->
-    <script src="my-custom-element.js"></script>
+    <script src="http-mock-manager.js"></script>
     
     <script>
         // Escuchar eventos del custom element
@@ -115,7 +115,7 @@ async function buildElements() {
         // Función para crear elementos dinámicamente
         function createDynamicElement() {
             const container = document.getElementById('dynamic-container');
-            const element = document.createElement('my-custom-element');
+            const element = document.createElement('http-mock-manager');
             element.setAttribute('name', 'Dinámico ' + Date.now());
             element.setAttribute('message', 'Creado en: ' + new Date().toLocaleString());
             container.appendChild(element);
