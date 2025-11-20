@@ -26,3 +26,10 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+sandbox/ng_test_16/node_modules
+sandbox/ng_test_16/dist
+sandbox/ng_test_16/.angular
+sandbox/ng_test_16/.vscode
+
+poc_ng_element-1.0.0.tgz

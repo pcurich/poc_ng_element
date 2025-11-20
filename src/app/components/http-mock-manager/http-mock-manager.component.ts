@@ -107,7 +107,6 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   addCommonHeader(headerName: string, defaultValue: string): void {
     // Verificar si la cabecera ya existe (no debería pasar debido a los botones deshabilitados)
     if (this.headers[headerName]) {
-      console.log(`Header ${headerName} already exists with value: ${this.headers[headerName]}`);
       return;
     }
 
@@ -115,7 +114,6 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     this.headers[headerName] = defaultValue;
     
     // Mostrar confirmación de éxito
-    console.log(`Added header: ${headerName} = ${defaultValue}`);
     this.jsonValidationMessage.set({
       type: 'success',
       text: `Cabecera "${headerName}" agregada exitosamente`
@@ -162,7 +160,6 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   private async initializePresenter(): Promise<void> {
     try {
       await this.presenter.initialize();
-      console.log('🎭 HttpMockManagerPresenter initialized successfully');
       
       // Cargar códigos de servicio disponibles al inicializar
       await this.presenter.loadAvailableServiceCodes();
@@ -177,15 +174,15 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   private subscribeToPresenterEvents(): void {
     // Suscribirse a eventos del presenter para propagar al exterior
     this.presenter.events.onMockCreated.subscribe(mock => {
-      console.log('🎭 Presenter: Mock created', mock);
+      // Mock created
     });
 
     this.presenter.events.onMockDeleted.subscribe(mockId => {
-      console.log('🎭 Presenter: Mock deleted', mockId);
+      // Mock deleted
     });
 
     this.presenter.events.onMocksLoaded.subscribe(mocks => {
-      console.log('� Presenter: Mocks loaded', mocks);
+      // Mocks loaded
     });
 
     this.presenter.events.onError.subscribe(error => {
@@ -443,14 +440,6 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
         return;
       }
 
-      console.log('💾 Saving complete mock with data:', {
-        name: this.nameMock,
-        url: this.url,
-        method: this.httpMethod,
-        serviceCode: this.serviceCode,
-        responseBody: this.responseBody
-      });
-
       // Crear primero el schema
       const schema: MockSchema = {
         nameMock: this.nameMock,
@@ -466,7 +455,6 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
       const createdMock = await this.presenter.handleSaveMockSchema(schema);
       
       if (createdMock && createdMock.id) {
-        console.log('✅ Mock schema creado, ahora guardando body...');
         
         // Luego guardar el body
         const mockBody: MockBody = {
@@ -475,7 +463,6 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
         
         await this.presenter.handleSaveMockBody(mockBody, createdMock.id);
         
-        console.log('✅ Mock completo guardado exitosamente:', createdMock);
         
         // Actualizar estadísticas después de guardar el mock
         await this.refreshDatabaseStats();
@@ -614,7 +601,6 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
         // Auto-poblar Body
         this.responseBody = firstMock.responseBody || '{}';
         
-        console.log('🎯 Auto-populated fields from first mock:', firstMock.name);
       }
     }
   }
@@ -657,8 +643,6 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
       
       this.databaseCreatedEvent.emit();
       
-      console.log('🗃️ Database created successfully from component');
-      console.log('📊 Indexes created:', config.indexes);
     } catch (error) {
       console.error('❌ Error creating database:', error);
     }
@@ -681,19 +665,6 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
       unique: index.options?.unique || false
     }));
     
-    console.log('📄 Default database configuration loaded with indexes:', {
-      name: this.dbName,
-      version: this.dbVersion,
-      objectStoreName: this.dbObjectStoreName,
-      keyPath: this.dbKeyPath,
-      indexesCount: this.dbIndexes.length,
-      indexes: this.dbIndexes.map(idx => `${idx.name}: ${idx.keyPath}`)
-    });
-    
-    // Mostrar índices específicos cargados
-    console.log('🔍 Loaded default indexes:', this.dbIndexes.map(idx => 
-      `{ name: "${idx.name}", keyPath: "${idx.keyPath}" }`
-    ).join(', '));
   }
 
   // === Métodos para gestión de índices de base de datos ===
@@ -718,7 +689,6 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
         keyPath: keyPath,
         unique: false // Los índices no necesitan ser únicos
       };
-      console.log('🔄 Index updated:', indexName);
     } else {
       // Agregar nuevo índice
       this.dbIndexes = [...this.dbIndexes, {
@@ -726,7 +696,6 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
         keyPath: keyPath,
         unique: false // Los índices no necesitan ser únicos
       }];
-      console.log('➕ Index added:', indexName);
     }
 
     // Limpiar campos
@@ -736,7 +705,6 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
 
   removeIndex(indexName: string): void {
     this.dbIndexes = this.dbIndexes.filter(index => index.name !== indexName);
-    console.log('➖ Index removed:', indexName);
   }
 
   getIndexCount(): number {
@@ -759,14 +727,12 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     this.setActiveGroup('http');
     this.setActiveSubTab(1);
     
-    console.log('✏️ Mock loaded for editing:', mock.name);
   }
 
   formatJson(): void {
     try {
       const parsed = JSON.parse(this.responseBody);
       this.responseBody = JSON.stringify(parsed, null, 2);
-      console.log('🎨 JSON formatted successfully');
       this.jsonValidationMessage.set({ 
         type: 'success', 
         text: '🎨 JSON formateado correctamente' 
@@ -820,7 +786,6 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   // === Métodos de persistencia expandidos ===
 
   exportCompleteDatabase(): void {
-    console.log('🏢 Exporting complete database...');
     // TODO: Implementar exportación completa de la base de datos
   }
 
@@ -829,7 +794,6 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   async refreshDatabaseStats(): Promise<void> {
     try {
 
-      console.log('🔄 Refreshing database statistics...');
       
       // Cargar configuración de base de datos por defecto
       await this.presenter.loadDefaultDatabaseConfig();
@@ -846,7 +810,6 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
       // Simular un pequeño delay para asegurar que la UI se actualice
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      console.log('✅ Database statistics refreshed successfully');
     } catch (error) {
       console.error('❌ Error refreshing database statistics:', error);
     }
