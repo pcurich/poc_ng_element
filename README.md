@@ -283,15 +283,40 @@ export class StatsComponent {
 
 ## 🔧 Scripts NPM Disponibles
 
+### 📦 Producción y Exports
+
 | Comando | Descripción | Output |
 |---------|-------------|--------|
-| `npm run export:standalone` | ⚡ **RECOMENDADO** - Exporta web component portable | `export-standalone/` |
-| `npm run package:tgz` | Genera paquete NPM completo (Web Component + ORM) | `poc-ng-element-1.0.0.tgz` |
-| `npm run package:elements` | Build del web component | `dist/http-mock-manager.js` |
-| `npm run serve:elements` | Servir demo local | `http://localhost:4200` |
-| `npm run demo:elements` | Build + Serve demo | Build → Server |
-| `npm start` | Desarrollo Angular normal | `http://localhost:4200` |
-| `npm run build` | Build producción Angular | `dist/` |
+| `npm run export:clean` | 🧹 **RECOMENDADO** - Limpia + Construye + Exporta standalone | `export-standalone/` |
+| `npm run export:standalone` | ⚡ Exporta web component portable | `export-standalone/` |
+| `npm run package:tgz` | 📦 Genera paquete NPM completo (Web Component + ORM) | `poc-ng-element-1.0.0.tgz` |
+| `npm run package:elements` | 🔨 Build del web component | `dist/http-mock-manager.js` |
+
+### 🛠️ Desarrollo
+
+| Comando | Descripción | Output |
+|---------|-------------|--------|
+| `npm start` | 🚀 Servidor desarrollo Angular | `http://localhost:4200` |
+| `npm run build` | 🏗️ Build producción Angular | `dist/` |
+| `npm run build:dev` | 🏗️ Build development Angular | `dist/` |
+| `npm run build:elements` | 🔨 Build custom element | `dist/browser/` |
+| `npm run serve:elements` | 🌐 Servir demo local | `http://localhost:4200` |
+| `npm run demo:elements` | 🎬 Build + Serve demo | Build → Server |
+| `npm run watch` | 👀 Build con watch mode | Auto-rebuild |
+| `npm test` | 🧪 Ejecutar tests unitarios | Karma + Jasmine |
+
+### 🧹 Limpieza
+
+| Comando | Descripción |
+|---------|-------------|
+| `npm run clean` | 🧹 Limpia dist + cache completo |
+| `npm run clean:dist` | 🧹 Limpia solo carpeta dist |
+| `npm run clean:cache` | 🧹 Limpia cache de Angular |
+| `npm run clean:install` | 🧹 Limpia + reinstala node_modules |
+| `npm run clean:build` | 🧹 Limpia dist + build dev |
+| `npm run clean:build:prod` | 🧹 Limpia dist + build prod |
+| `npm run rebuild` | 🔄 Limpia + reinstala + build dev |
+| `npm run fresh-start` | 🆕 Limpia + reinstala + build + serve |
 
 ---
 
@@ -433,6 +458,8 @@ describe('MyComponent', () => {
 
 ```json
 {
+  "name": "poc-ng-element",
+  "version": "1.0.0",
   "main": "dist/http-mock-manager.js",
   "types": "index.d.ts",
   "exports": {
@@ -440,10 +467,27 @@ describe('MyComponent', () => {
       "types": "./index.d.ts",
       "default": "./dist/http-mock-manager.js"
     },
-    "./core": "./src/core/index.ts",
-    "./src/core": "./src/core/index.ts"
-  }
+    "./core": "./src/core/index.ts"
+  },
+  "files": [
+    "dist/http-mock-manager.js",
+    "dist/demo.html",
+    "dist/USAGE.md",
+    "src/core",
+    "README.md",
+    "index.d.ts"
+  ]
 }
+```
+
+### Importaciones disponibles:
+
+```typescript
+// Web Component (default export)
+import 'poc-ng-element';
+
+// ORM Library
+import { ORMFactory, HttpMockService, provideHttpMockORM } from 'poc-ng-element/core';
 ```
 
 ---

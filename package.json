@@ -34,8 +34,7 @@
       "types": "./index.d.ts",
       "default": "./dist/http-mock-manager.js"
     },
-    "./core": "./src/core/index.ts",
-    "./src/core": "./src/core/index.ts"
+    "./core": "./src/core/index.ts"
   },
   "files": [
     "dist/http-mock-manager.js",
