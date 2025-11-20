@@ -13,11 +13,11 @@ export class AppComponent {
 
   // Método para manejar cuando se guarda un mock schema
   onMockSchemaSaved(mockSchema: any): void {
-    console.log('🌐 Mock Schema guardado:', mockSchema);
+    // Handle mock schema saved
   }
 
   // Método para manejar cambios de contexto
   onContextChanged(context: any): void {
-    console.log('🌐 Contexto cambiado:', context);
+    // Handle context changed
   }
 }
