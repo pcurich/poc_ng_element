@@ -18,35 +18,37 @@ createApplication({
     provideZonelessChangeDetection()
   ]
 }).then((appRef) => {
-  // 🎯 Crear el custom element HttpMockManagerComponent
-  const httpMockManagerElement = createCustomElement(HttpMockManagerComponent, {
-    injector: appRef.injector
-  });
-  
-  // 📋 Registrar el custom element en el DOM global
-  customElements.define('http-mock-manager', httpMockManagerElement);
-  
-  // 🎨 Agregar estilos globales si es necesario
-  if (!document.querySelector('#http-mock-manager-global-styles')) {
-    const globalStyles = document.createElement('style');
-    globalStyles.id = 'http-mock-manager-global-styles';
-    globalStyles.textContent = `
-      /* Estilos globales para http-mock-manager custom element */
-      http-mock-manager {
-        display: block;
-        position: relative;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      }
-      
-      /* Asegurar z-index apropiado */
-      http-mock-manager[data-floating] {
-        position: fixed !important;
-        z-index: 999999 !important;
-      }
-    `;
-    document.head.appendChild(globalStyles);
+  // Verificar si estamos en un entorno de navegador
+  if (typeof customElements !== 'undefined' && typeof document !== 'undefined') {
+    // 🎯 Crear el custom element HttpMockManagerComponent
+    const httpMockManagerElement = createCustomElement(HttpMockManagerComponent, {
+      injector: appRef.injector
+    });
+    
+    // 📋 Registrar el custom element en el DOM global
+    customElements.define('http-mock-manager', httpMockManagerElement);
+    
+    // 🎨 Agregar estilos globales si es necesario
+    if (!document.querySelector('#http-mock-manager-global-styles')) {
+      const globalStyles = document.createElement('style');
+      globalStyles.id = 'http-mock-manager-global-styles';
+      globalStyles.textContent = `
+        /* Estilos globales para http-mock-manager custom element */
+        http-mock-manager {
+          display: block;
+          position: relative;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        /* Asegurar z-index apropiado */
+        http-mock-manager[data-floating] {
+          position: fixed !important;
+          z-index: 999999 !important;
+        }
+      `;
+      document.head.appendChild(globalStyles);
+    }
   }
-  
 }).catch(err => {
   console.error('❌ Error bootstrapping http-mock-manager custom element:', err);
 });

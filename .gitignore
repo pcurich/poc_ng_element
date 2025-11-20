@@ -38,6 +38,10 @@ sandbox/ng_test_16/node_modules
 sandbox/ng_test_16/dist
 sandbox/ng_test_16/.angular
 sandbox/ng_test_16/.vscode
+sandbox/ng_test_18/node_modules
+sandbox/ng_test_18/dist
+sandbox/ng_test_18/.angular
+sandbox/ng_test_18/.vscode
 
 # Package
 poc_ng_element-1.0.0.tgz

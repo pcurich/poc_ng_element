@@ -10,7 +10,6 @@ $app-text-secondary: rgba(255, 255, 255, 0.9);
 $app-shadow: rgba(0, 0, 0, 0.1);
 
 .app-container {
-  text-align: center;
   padding: 30px;
   background: linear-gradient(135deg, $app-primary-gradient-start 0%, $app-primary-gradient-end 100%);
   border-radius: 12px;

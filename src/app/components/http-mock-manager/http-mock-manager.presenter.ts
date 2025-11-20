@@ -902,4 +902,64 @@ export class HttpMockManagerPresenter implements OnDestroy {
     this.error$.complete();
     this.stateChanged$.complete();
   }
+
+  /**
+   * Busca un mock por serviceCode
+   */
+  async findMockByServiceCode(serviceCode: string): Promise<HttpMockEntity | null> {
+    try {
+      this.setLoading(true);
+      // Usar el repositorio directamente para buscar
+      const mocks = await this.httpMockRepository.findByServiceCode(serviceCode);
+      // Retornar el primero si existe
+      return mocks.length > 0 ? mocks[0] : null;
+    } catch (error) {
+      console.error('Error finding mock by service code:', error);
+      return null;
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  /**
+   * Actualiza un mock existente con un nuevo schema
+   */
+  async handleUpdateMockSchema(mockId: string, mockSchema: MockSchema): Promise<HttpMockEntity | null> {
+    try {
+      this.setLoading(true);
+      this.setLastOperation(`Updating mock: ${mockSchema.nameMock}`);
+
+      const updateData: Partial<IHttpMockData> = {
+        name: mockSchema.nameMock,
+        serviceCode: mockSchema.serviceCode,
+        url: mockSchema.url,
+        method: mockSchema.httpMethod,
+        httpCodeResponseValue: mockSchema.httpCodeResponseValue,
+        delayMs: mockSchema.delayMs,
+        headers: mockSchema.headers
+      };
+
+      const updatedMock = await this.httpMockService.updateMock(mockId, updateData);
+      
+      if (updatedMock) {
+        // Actualizar el estado local si el mock está en la lista actual
+        this._currentMocks.update(mocks => 
+          mocks.map(mock => mock.id === mockId ? updatedMock : mock)
+        );
+        
+        await this.refreshStatistics();
+        this.setLastOperation(`Mock "${mockSchema.nameMock}" updated successfully`);
+        return updatedMock;
+      }
+      
+      return null;
+    } catch (error) {
+      const errorMessage = `Failed to update mock: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      this.setError(errorMessage);
+      this.error$.next(errorMessage);
+      return null;
+    } finally {
+      this.setLoading(false);
+    }
+  }
 }

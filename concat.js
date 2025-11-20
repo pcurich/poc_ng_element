@@ -19,13 +19,32 @@ async function concatElements() {
   try {
     // Leer todos los archivos JS del directorio dist
     const files = await fs.readdir(distPath);
-    const jsFiles = files.filter(file => 
+    let jsFiles = files.filter(file => 
       file.endsWith('.js') && 
       !file.includes('.map') && 
       !file.includes('http-mock-manager.js') // Evitar incluirse a sí mismo
     );
     
-    console.log('📦 Found JS files:', jsFiles);
+    // Ordenar archivos para asegurar carga correcta: runtime -> polyfills -> main
+    const priority = ['runtime', 'polyfills', 'main'];
+    jsFiles.sort((a, b) => {
+      const aIndex = priority.findIndex(p => a.startsWith(p));
+      const bIndex = priority.findIndex(p => b.startsWith(p));
+      
+      // Si ambos están en la lista de prioridad
+      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+      
+      // Si solo a está en la lista, va primero
+      if (aIndex !== -1) return -1;
+      
+      // Si solo b está en la lista, va primero
+      if (bIndex !== -1) return 1;
+      
+      // Orden alfabético por defecto
+      return a.localeCompare(b);
+    });
+    
+    console.log('📦 Found JS files (ordered):', jsFiles);
 
     if (jsFiles.length === 0) {
       console.error('❌ No JS files found in dist directory. Run "npm run build:elements" first.');
