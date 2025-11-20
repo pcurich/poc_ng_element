@@ -27,6 +27,12 @@
   "private": false,
   "main": "dist/http-mock-manager.js",
   "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./dist/http-mock-manager.js"
+    }
+  },
   "files": [
     "dist/http-mock-manager.js",
     "dist/demo.html",

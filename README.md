@@ -175,17 +175,77 @@ Ver la [Guía completa de SCSS](./SCSS_GUIDE.md) para más detalles.
 - Soporte para IE11 con polyfills
 - Compatible con cualquier framework o vanilla JS
 
+## 📦 Integración en otros proyectos Angular (v8, v16, etc.)
+
+Este componente ha sido diseñado para ser **agnóstico de la versión de Angular** del proyecto consumidor. Al ser un Web Component nativo y **Zoneless**, no entra en conflicto con la versión de `zone.js` de la aplicación anfitriona.
+
+### Pasos para integrar
+
+1. **Instalar el paquete**
+
+   ```bash
+   npm install poc-ng-element
+   # O si usas el archivo tgz local:
+   npm install ./path/to/poc-ng-element-1.0.0.tgz
+   ```
+
+2. **Habilitar Custom Elements Schema**
+
+   En el módulo donde vayas a usar el componente (generalmente `app.module.ts`), agrega `CUSTOM_ELEMENTS_SCHEMA`:
+
+   ```typescript
+   import { NgModule, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+   import { BrowserModule } from '@angular/platform-browser';
+   import { AppComponent } from './app.component';
+
+   // Importar el custom element para registrarlo
+   import 'poc-ng-element';
+
+   @NgModule({
+     declarations: [AppComponent],
+     imports: [BrowserModule],
+     schemas: [CUSTOM_ELEMENTS_SCHEMA], // <--- IMPORTANTE
+     bootstrap: [AppComponent]
+   })
+   export class AppModule { }
+   ```
+
+3. **Usar en el HTML**
+
+   Ya puedes usar la etiqueta en tus templates:
+
+   ```html
+   <http-mock-manager
+     [attr.name-mock]="'Mi Mock'"
+     [attr.url]="'/api/test'"
+     (saveMockSchemaEvent)="onSave($event)">
+   </http-mock-manager>
+   ```
+
+   > **Nota para Angular 8+**: Al usar Web Components, a veces es necesario usar la sintaxis `[attr.propiedad]` para pasar strings o valores primitivos si el binding directo `[propiedad]` no funciona como se espera, aunque en versiones recientes de Angular el binding de propiedades funciona correctamente con Custom Elements.
+
+### Matriz de Compatibilidad
+
+| Framework / Versión | Estado | Notas |
+|---------------------|--------|-------|
+| **Angular 16+** | ✅ Soportado | Funciona nativamente. |
+| **Angular 8-15** | ✅ Soportado | Requiere `CUSTOM_ELEMENTS_SCHEMA`. No hay conflicto de Zone.js. |
+| **React / Vue / Vanilla** | ✅ Soportado | Funciona como cualquier etiqueta HTML estándar. |
+
 ## 🐛 Troubleshooting
 
 ### Error: "Custom element not defined"
+
 - Asegúrate de que el script `my-custom-element.js` se haya cargado completamente
 - Verifica que no hay errores en la consola del navegador
 
 ### El elemento no se muestra
+
 - Verifica que las propiedades se están pasando correctamente
 - Revisa que el elemento tenga contenido o estilos visibles
 
 ### Problemas de compilación
+
 ```bash
 # Limpiar y reinstalar dependencias
 rm -rf node_modules package-lock.json

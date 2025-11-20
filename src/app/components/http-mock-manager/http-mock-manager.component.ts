@@ -73,13 +73,13 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   public contextOptionsState = signal<ContextOption[]>([]);
   public newHeaderKey = signal<string>('');
   public newHeaderValue = signal<string>('');
+  public editingHeaderKey = signal<string | null>(null);
   public newIndexName = signal<string>('');
   public newIndexKeyPath = signal<string>('');
 
   // === Nuevas propiedades para funcionalidad expandida ===
-  public mergeStrategy: string = 'replace';
   public showDeleteConfirmation: boolean = false;
-  public showSaveConfirmation: boolean = false;
+  public showSaveConfirmation = signal<boolean>(false);
   public jsonValidationMessage = signal<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // === Service Code Selection ===
@@ -96,6 +96,12 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   // === Presenter (Capa de presentación) ===
   
   private presenter: HttpMockManagerPresenter = new HttpMockManagerPresenter();
+
+  constructor() {
+    effect(() => {
+      console.log('👀 showSaveConfirmation signal changed:', this.showSaveConfirmation());
+    });
+  }
 
   // === Computed properties usando el presenter ===
 
@@ -346,32 +352,29 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   // ========== MÉTODOS DE ARCHIVO (IMPORT/EXPORT) ==========
 
   downloadConfig(): void {
-    let responseBodyValue: any = null;
     try {
-      responseBodyValue = JSON.parse(this.responseBody);
-    } catch (e) {
-      responseBodyValue = String(this.responseBody || '');
-    }
+      // Extraer configuración desde ORMFactory
+      const defaultConfig = ORMFactory.getDefaultHttpMocksConfig();
+      const objectStore = defaultConfig.objectStores[0];
+      
+      const payload: DatabaseConfig = {
+        name: defaultConfig.name,
+        version: defaultConfig.version,
+        objectStoreName: objectStore.name,
+        keyPath: (objectStore.options?.keyPath as string) || 'id',
+        indexes: (objectStore.indexes || []).map(index => ({
+          name: index.name,
+          keyPath: index.keyPath as string,
+          unique: index.options?.unique || false
+        }))
+      };
 
-    const payload = {
-      selectedContext: this.selectedContext,
-      headers: this.headers,
-      nameMock: this.nameMock,
-      serviceCode: this.serviceCode,
-      url: this.url,
-      httpMethod: this.httpMethod,
-      httpCodeResponseValue: this.httpCodeResponseValue,
-      delayMs: this.delayMs,
-      responseBody: responseBodyValue,
-    };
-
-    try {
       const json = JSON.stringify(payload, null, 2);
       const blob = new Blob([json], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `http-mock-config.json`;
+      a.download = `database-config.json`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -422,22 +425,27 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
 
   async saveContext(): Promise<void> {
     const currentGroup = this.activeGroup();
+    console.log('💾 saveContext called. Group:', currentGroup);
     
     if (currentGroup === 'http') {
       // Crear el mock completo con schema y body
-      await this.saveCompleteMock();
+      const success = await this.saveCompleteMock();
+      console.log('💾 saveCompleteMock result:', success);
       
-      // Mostrar confirmación para siguiente acción
-      this.showSaveConfirmation = true;
+      if (success) {
+        // Mostrar confirmación para siguiente acción
+        console.log('✅ Showing save confirmation modal');
+        this.showSaveConfirmation.set(true);
+      }
     }
   }
 
-  private async saveCompleteMock(): Promise<void> {
+  private async saveCompleteMock(): Promise<boolean> {
     try {
       // Validar que los campos requeridos estén completos
       if (!this.nameMock.trim() || !this.url.trim()) {
         console.error('❌ Missing required fields: nameMock and url are required');
-        return;
+        return false;
       }
 
       // Crear primero el schema
@@ -451,17 +459,35 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
         headers: Object.keys(this.headers).length > 0 ? this.headers : undefined,
       };
 
-      // Crear el mock usando el presenter
-      const createdMock = await this.presenter.handleSaveMockSchema(schema);
+      let savedMock: any = null;
+      let isUpdate = false;
+
+      // Validar si existe un mock con el mismo serviceCode
+      if (this.serviceCode && this.serviceCode.trim() !== '') {
+        const existingMock = await this.presenter.findMockByServiceCode(this.serviceCode);
+        
+        if (existingMock && existingMock.id) {
+          console.log(`🔄 Mock with serviceCode "${this.serviceCode}" already exists. Updating...`);
+          savedMock = await this.presenter.handleUpdateMockSchema(existingMock.id, schema);
+          isUpdate = true;
+        } else {
+          // Si no existe, crear nuevo
+          savedMock = await this.presenter.handleSaveMockSchema(schema);
+        }
+      } else {
+        // Si no hay serviceCode, crear nuevo (o manejar según reglas de negocio)
+        savedMock = await this.presenter.handleSaveMockSchema(schema);
+      }
       
-      if (createdMock && createdMock.id) {
+      if (savedMock && savedMock.id) {
+        console.log('✅ Mock saved successfully with ID:', savedMock.id);
         
         // Luego guardar el body
         const mockBody: MockBody = {
           responseBody: this.responseBody
         };
         
-        await this.presenter.handleSaveMockBody(mockBody, createdMock.id);
+        await this.presenter.handleSaveMockBody(mockBody, savedMock.id);
         
         
         // Actualizar estadísticas después de guardar el mock
@@ -471,10 +497,31 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
         this.saveMockSchemaEvent.emit(schema);
         this.saveMockBodyEvent.emit(mockBody);
         
+        // Mostrar mensaje de éxito
+        this.jsonValidationMessage.set({
+          type: 'success',
+          text: isUpdate 
+            ? `✅ Mock "${this.nameMock}" actualizado correctamente` 
+            : `✅ Mock "${this.nameMock}" creado correctamente`
+        });
+        
+        setTimeout(() => {
+          this.jsonValidationMessage.set(null);
+        }, 3000);
+        
         // NO hacer reset automático - se manejará en la confirmación
+        return true;
       }
+      
+      console.warn('⚠️ Mock save operation completed but no valid mock returned');
+      return false;
     } catch (error) {
       console.error('❌ Error al guardar mock completo:', error);
+      this.jsonValidationMessage.set({
+        type: 'error',
+        text: `❌ Error al guardar: ${(error as Error).message}`
+      });
+      return false;
     }
   }
 
@@ -498,20 +545,47 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   addHeader(): void {
     const key = this.newHeaderKey().trim();
     const value = this.newHeaderValue();
+    const editingKey = this.editingHeaderKey();
     
     if (!key) return;
     
+    // Si estamos editando, removemos el header anterior si la key cambió
+    if (editingKey && editingKey !== key) {
+      const newHeaders = { ...this.headers };
+      delete newHeaders[editingKey];
+      this.headers = newHeaders;
+    }
+    
+    // Agregamos o actualizamos el header
     this.headers = { ...this.headers, [key]: value };
     this.newHeaderKey.set('');
     this.newHeaderValue.set('');
+    this.editingHeaderKey.set(null);
     
     this.emitSaveHeaders();
+  }
+
+  editHeader(key: string): void {
+    this.newHeaderKey.set(key);
+    this.newHeaderValue.set(this.headers[key]);
+    this.editingHeaderKey.set(key);
+  }
+
+  cancelEditHeader(): void {
+    this.newHeaderKey.set('');
+    this.newHeaderValue.set('');
+    this.editingHeaderKey.set(null);
   }
 
   removeHeader(key: string): void {
     const newHeaders = { ...this.headers };
     delete newHeaders[key];
     this.headers = newHeaders;
+    
+    // Si estábamos editando este header, cancelar la edición
+    if (this.editingHeaderKey() === key) {
+      this.cancelEditHeader();
+    }
     
     this.emitSaveHeaders();
   }
@@ -785,8 +859,68 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
 
   // === Métodos de persistencia expandidos ===
 
-  exportCompleteDatabase(): void {
-    // TODO: Implementar exportación completa de la base de datos
+  async exportCompleteDatabase(): Promise<void> {
+    try {
+      // Extraer configuración de la base de datos
+      const defaultConfig = ORMFactory.getDefaultHttpMocksConfig();
+      const objectStore = defaultConfig.objectStores[0];
+      
+      const databaseConfig: DatabaseConfig = {
+        name: defaultConfig.name,
+        version: defaultConfig.version,
+        objectStoreName: objectStore.name,
+        keyPath: (objectStore.options?.keyPath as string) || 'id',
+        indexes: (objectStore.indexes || []).map(index => ({
+          name: index.name,
+          keyPath: index.keyPath as string,
+          unique: index.options?.unique || false
+        }))
+      };
+
+      // Exportar todos los mocks de la base de datos
+      const allMocks = await this.presenter.handleExportMocks();
+
+      // Crear el payload completo con configuración y datos
+      const completeExport = {
+        databaseConfig: databaseConfig,
+        exportDate: new Date().toISOString(),
+        totalMocks: allMocks.length,
+        mocks: allMocks
+      };
+
+      // Descargar el archivo JSON
+      const json = JSON.stringify(completeExport, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `complete-database-export-${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      // Mostrar mensaje de éxito
+      this.jsonValidationMessage.set({
+        type: 'success',
+        text: `✅ Base de datos exportada: ${allMocks.length} mocks`
+      });
+
+      setTimeout(() => {
+        this.jsonValidationMessage.set(null);
+      }, 3000);
+
+    } catch (error) {
+      console.error('Failed to export complete database', error);
+      this.jsonValidationMessage.set({
+        type: 'error',
+        text: `❌ Error al exportar: ${(error as Error).message}`
+      });
+
+      setTimeout(() => {
+        this.jsonValidationMessage.set(null);
+      }, 5000);
+    }
   }
 
   // === Métodos de gestión de base de datos ===
@@ -865,13 +999,13 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   // === Métodos para manejar confirmación de guardado ===
 
   continueEditing(): void {
-    this.showSaveConfirmation = false;
+    this.showSaveConfirmation.set(false);
     console.log('📝 Usuario decidió continuar editando el mock actual');
     // No hacer nada, mantener el formulario como está
   }
 
   createNewRecord(): void {
-    this.showSaveConfirmation = false;
+    this.showSaveConfirmation.set(false);
     console.log('➕ Usuario decidió crear un nuevo registro');
     // Limpiar formulario para nuevo registro
     this.resetForm();

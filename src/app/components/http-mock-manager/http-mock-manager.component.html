@@ -458,7 +458,10 @@
           <!-- Add New Header -->
           <div class="header-form">
             <div class="form-header">
-              <h5>➕ Cabeceras</h5>
+              <h5>{{ editingHeaderKey() ? '✏️ Editar Cabecera' : '➕ Agregar Cabecera' }}</h5>
+              <button *ngIf="editingHeaderKey()" class="btn btn-secondary btn-small" (click)="cancelEditHeader()">
+                Cancelar
+              </button>
             </div>
             <div class="form-row">
               <input type="text" [(ngModel)]="newHeaderKey" placeholder="Nombre de cabecera (ej. Content-Type)..."
@@ -466,7 +469,7 @@
               <input type="text" [(ngModel)]="newHeaderValue" placeholder="Valor de cabecera..." class="form-input flex-1"
                 (keydown.enter)="addHeader()">
               <button class="btn btn-primary" (click)="addHeader()" [disabled]="!newHeaderKey().trim()">
-                <span class="icon-white">＋</span>
+                <span class="icon-white">{{ editingHeaderKey() ? '✓' : '＋' }}</span>
               </button>
             </div>
           </div>
@@ -474,14 +477,19 @@
           <!-- Current Headers -->
           <div class="headers-list" *ngIf="getHeaderKeys().length > 0">
             <h5>📋 Cabeceras Configuradas ({{ getHeaderKeys().length }})</h5>
-            <div class="header-item" *ngFor="let key of getHeaderKeys()">
+            <div class="header-item" *ngFor="let key of getHeaderKeys()" [class.editing]="editingHeaderKey() === key">
               <div class="header-content">
                 <span class="header-key">{{ key }}:</span>
                 <span class="header-value">{{ headers[key] }}</span>
               </div>
-              <button class="btn-delete" (click)="removeHeader(key)" title="Eliminar Cabecera">
-                ❌
-              </button>
+              <div class="header-actions">
+                <button class="btn-edit" (click)="editHeader(key)" title="Editar Cabecera" [disabled]="editingHeaderKey() !== null && editingHeaderKey() !== key">
+                  ✏️
+                </button>
+                <button class="btn-delete" (click)="removeHeader(key)" title="Eliminar Cabecera">
+                  ❌
+                </button>
+              </div>
             </div>
           </div>
 
@@ -710,7 +718,7 @@
                 <p>Exportar la configuración actual de la base de datos (solo estructura)</p>
               </div>
               <button class="btn btn-primary" (click)="downloadConfig()">
-                📅 Descargar Config
+                📅 Descargar
               </button>
             </div>
 
@@ -720,7 +728,7 @@
                 <p>Exportar todos los mocks del código de servicio actual</p>
               </div>
               <button class="btn btn-primary" (click)="exportMocks()" [disabled]="!serviceCode.trim()">
-                📤 Exportar Mocks de Servicio
+                📤 Exportar
               </button>
             </div>
 
@@ -730,7 +738,7 @@
                 <p>Exportar toda la base de datos con todos los mocks y configuración</p>
               </div>
               <button class="btn btn-primary" (click)="exportCompleteDatabase()">
-                🏢 Exportar BD Completa
+                🏢 Exportar BD
               </button>
             </div>
           </div>
@@ -751,20 +759,6 @@
                 </button>
               </div>
             </div>
-
-            <div class="import-option">
-              <div class="option-info">
-                <strong>🔄 Estrategia de Fusión</strong>
-                <p>Elija cómo manejar conflictos durante la importación</p>
-              </div>
-              <div class="merge-controls">
-                <select class="form-select" [(ngModel)]="mergeStrategy">
-                  <option value="replace">Reemplazar existentes</option>
-                  <option value="merge">Fusionar con existentes</option>
-                  <option value="skip">Omitir duplicados</option>
-                </select>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -774,7 +768,7 @@
   </div>
 
   <!-- Save Confirmation Dialog - Global Level -->
-  <div class="confirmation-overlay" *ngIf="showSaveConfirmation">
+  <div class="confirmation-overlay" *ngIf="showSaveConfirmation()">
     <div class="confirmation-dialog save-confirmation">
       <h5>✅ Mock Guardado Exitosamente</h5>
       <p>El mock <strong>"{{ nameMock }}"</strong> se ha guardado correctamente.</p>
