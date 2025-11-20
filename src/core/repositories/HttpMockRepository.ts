@@ -16,7 +16,7 @@
 import { BaseRepository } from './BaseRepository';
 import { HttpMockEntity, HttpMethod, IHttpMockData } from '../models/HttpMockEntity';
 import { IDbContext } from '../context/IDbContext';
-import { ServiceCodeWithStats } from '../../app/components/interfaces';
+import { ServiceCodeWithStats } from '../types/service-code-stats.types';
 
 /**
  * Interface específica para estadísticas de HTTP Mocks

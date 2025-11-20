@@ -23,6 +23,7 @@ export {
   ITransactionContext,
   IDbOperationResult
 } from './types/database.types';
+export { ServiceCodeWithStats } from './types/service-code-stats.types';
 
 // 🏷️ Interfaces & Metadata
 export {
@@ -49,15 +50,18 @@ export {
 } from './repositories/IRepository';
 export { BaseRepository } from './repositories/BaseRepository';
 
-// 📝 Task Domain (Example Implementation)
-export { Task, TaskStatus, ITaskData } from './models/Task.entity';
-export { TaskRepository, ITaskQueryOptions, ITaskStatistics } from './repositories/TaskRepository';
-export { TaskService, ITaskState } from './services/TaskService';
-
 // 🌐 HTTP Mock Domain (New Implementation)
 export { HttpMockEntity, HttpMethod, IHttpMockData } from './models/HttpMockEntity';
 export { HttpMockRepository, IHttpMockStatistics, IHttpMockSearchOptions } from './repositories/HttpMockRepository';
-export { HttpMockService, IHttpMockServiceState, IHttpInterceptionConfig, IHttpInterceptionResult } from './services/HttpMockService';
+export { HttpMockService, IHttpMockServiceState, IHttpInterceptionConfig, IHttpInterceptionResult, ICleanupOptions } from './services/HttpMockService';
+
+// 📦 Standalone Providers (Modern Angular Pattern)
+export { 
+  provideHttpMockService,
+  provideHttpMockORM,
+  provideHttpMockORMConfig,
+  HttpMockORMConfig
+} from './providers';
 
 // Importar tipos para uso interno
 import { IDbContext } from './context/IDbContext';
@@ -65,7 +69,6 @@ import { DbContext } from './context/DbContext';
 import { IDbConfig } from './types/database.types';
 import { BaseEntity } from './models/BaseEntity';
 import { BaseRepository } from './repositories/BaseRepository';
-import { TaskRepository } from './repositories/TaskRepository';
 import { HttpMockRepository } from './repositories/HttpMockRepository';
 
 /**
@@ -91,42 +94,12 @@ export class ORMFactory {
   }
 
   /**
-   * Crea un repositorio específico para tareas
-   */
-  static createTaskRepository(dbContext: IDbContext): TaskRepository {
-    return new TaskRepository(dbContext);
-  }
-
-  /**
    * Crea un repositorio específico para HTTP Mocks
    */
   static createHttpMockRepository(dbContext: IDbContext): HttpMockRepository {
     return new HttpMockRepository(dbContext);
   }
 
-  /**
-   * Configuración por defecto para una base de datos de tareas
-   */
-  static getDefaultTasksConfig(): IDbConfig {
-    return {
-      name: 'TasksDB',
-      version: 1,
-      objectStores: [
-        {
-          name: 'tasks',
-          options: { keyPath: 'id' },
-          indexes: [
-            { name: 'status', keyPath: 'status' },
-            { name: 'priority', keyPath: 'priority' },
-            { name: 'assignedTo', keyPath: 'assignedTo' },
-            { name: 'dueDate', keyPath: 'dueDate' },
-            { name: 'createdAt', keyPath: 'createdAt' },
-            { name: 'updatedAt', keyPath: 'updatedAt' }
-          ]
-        }
-      ]
-    };
-  }
 
   /**
    * Configuración por defecto para HTTP Mocks
@@ -152,72 +125,120 @@ export class ORMFactory {
     };
   }
 
+  // === Singleton instances for database context ===
+  private static dbContextInstance: IDbContext | null = null;
+  private static httpMockRepositoryInstance: HttpMockRepository | null = null;
+
   /**
-   * Configuración completa con Tasks y HTTP Mocks
+   * Establece y obtiene la conexión a la base de datos (singleton)
+   * Se conecta automáticamente a HttpMocksDB con la configuración por defecto
    */
-  static getFullConfig(): IDbConfig {
-    return {
-      name: 'CompleteCoreDB',
-      version: 1,
-      objectStores: [
-        {
-          name: 'tasks',
-          options: { keyPath: 'id' },
-          indexes: [
-            { name: 'status', keyPath: 'status' },
-            { name: 'priority', keyPath: 'priority' },
-            { name: 'assignedTo', keyPath: 'assignedTo' },
-            { name: 'dueDate', keyPath: 'dueDate' },
-            { name: 'createdAt', keyPath: 'createdAt' },
-            { name: 'updatedAt', keyPath: 'updatedAt' }
-          ]
-        },
-        {
-          name: 'httpMocks',
-          options: { keyPath: 'id' },
-          indexes: [
-            { name: 'serviceCode', keyPath: 'serviceCode' },
-            { name: 'url', keyPath: 'url' },
-            { name: 'method', keyPath: 'method' },
-            { name: 'httpCodeResponseValue', keyPath: 'httpCodeResponseValue' },
-            { name: 'createdAt', keyPath: 'createdAt' },
-            { name: 'updatedAt', keyPath: 'updatedAt' }
-          ]
-        }
-      ]
-    };
+  static async getDbContext(): Promise<IDbContext> {
+    if (!this.dbContextInstance) {
+      const config = this.getDefaultHttpMocksConfig();
+      this.dbContextInstance = this.createDbContext(config);
+      await this.dbContextInstance.open();
+    }
+    return this.dbContextInstance;
   }
+
+  /**
+   * Obtiene el repositorio de HTTP Mocks (singleton)
+   * Establece automáticamente la conexión a la base de datos si no existe
+   */
+  static async getHttpMockRepository(): Promise<HttpMockRepository> {
+    if (!this.httpMockRepositoryInstance) {
+      const dbContext = await this.getDbContext();
+      this.httpMockRepositoryInstance = this.createHttpMockRepository(dbContext);
+    }
+    return this.httpMockRepositoryInstance;
+  }
+
+  /**
+   * Busca mocks HTTP por código de servicio (usando índice optimizado)
+   * @param serviceCode Código del servicio a buscar
+   * @returns Array de mocks que coinciden con el serviceCode
+   * 
+   * @example
+   * ```typescript
+   * const mocks = await ORMFactory.findMocksByServiceCode('userService');
+   * console.log(`Found ${mocks.length} mocks for userService`);
+   * ```
+   */
+  static async findMocksByServiceCode(serviceCode: string): Promise<import('./models/HttpMockEntity').IHttpMockData[]> {
+    try {
+      const repository = await this.getHttpMockRepository();
+      const entities = await repository.findByServiceCode(serviceCode);
+      return entities.map(entity => entity.toPlainObject());
+    } catch (error) {
+      console.error(`Error finding mocks by serviceCode "${serviceCode}":`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Busca mocks HTTP por URL (usando índice optimizado)
+   * @param url URL exacta a buscar
+   * @returns Array de mocks que coinciden con la URL
+   * 
+   * @example
+   * ```typescript
+   * const mocks = await ORMFactory.findMocksByUrl('/api/users/:id');
+   * console.log(`Found ${mocks.length} mocks for /api/users/:id`);
+   * ```
+   */
+  static async findMocksByUrl(url: string): Promise<import('./models/HttpMockEntity').IHttpMockData[]> {
+    try {
+      const repository = await this.getHttpMockRepository();
+      const entities = await repository.findByUrl(url);
+      return entities.map(entity => entity.toPlainObject());
+    } catch (error) {
+      console.error(`Error finding mocks by url "${url}":`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Cierra la conexión a la base de datos y libera recursos
+   * Útil para limpieza en tests o cuando se termina de usar la librería
+   */
+  static async closeDbContext(): Promise<void> {
+    if (this.dbContextInstance) {
+      await this.dbContextInstance.close();
+      this.dbContextInstance = null;
+      this.httpMockRepositoryInstance = null;
+    }
+  }
+
 }
 
 /**
  * 🎯 Ejemplos de uso del ORM:
  * 
- * === Tasks Example ===
+ * === Simple Library Usage (Recommended for Sandbox Projects) ===
  * ```typescript
- * // 1. Crear configuración para Tasks
- * const config = ORMFactory.getDefaultTasksConfig();
+ * import { ORMFactory, IHttpMockData } from '@your-package/core';
  * 
- * // 2. Crear contexto de DB
- * const dbContext = ORMFactory.createDbContext(config);
- * await dbContext.open();
+ * // 1. Buscar mocks por serviceCode (conexión automática)
+ * const userMocks: IHttpMockData[] = await ORMFactory.findMocksByServiceCode('userService');
+ * console.log('Found mocks:', userMocks);
  * 
- * // 3. Crear repositorio
- * const taskRepo = ORMFactory.createTaskRepository(dbContext);
+ * // 2. Buscar mocks por URL (conexión automática)
+ * const apiMocks: IHttpMockData[] = await ORMFactory.findMocksByUrl('/api/users/:id');
+ * console.log('Found mocks for URL:', apiMocks);
  * 
- * // 4. Usar el repositorio
- * const task = await taskRepo.create({
- *   title: 'Mi primera tarea',
- *   description: 'Descripción de la tarea',
- *   status: TaskStatus.PENDING,
- *   priority: 1
- * });
+ * // 3. Usar los mocks en tu aplicación
+ * if (userMocks.length > 0) {
+ *   const mock = userMocks[0];
+ *   console.log('Mock response:', mock.responseBody);
+ *   console.log('Status code:', mock.httpCodeResponseValue);
+ * }
  * 
- * // 5. O usar el servicio con Angular Signals
- * const taskService = new TaskService();
- * await taskService.initialize();
+ * // 4. Limpiar conexión cuando termines (opcional)
+ * await ORMFactory.closeDbContext();
  * ```
  * 
- * === HTTP Mocks Example ===
+ * === Advanced Usage with Manual Context ===
  * ```typescript
  * // 1. Configuración para HTTP Mocks
  * const config = ORMFactory.getDefaultHttpMocksConfig();
@@ -251,16 +272,33 @@ export class ORMFactory {
  * }
  * ```
  * 
- * === Full Configuration Example ===
+ * === Integration with HTTP Interceptors ===
  * ```typescript
- * // Base de datos completa con Tasks y HTTP Mocks
- * const fullConfig = ORMFactory.getFullConfig();
- * const dbContext = ORMFactory.createDbContext(fullConfig);
- * await dbContext.open();
+ * import { ORMFactory } from '@your-package/core';
  * 
- * // Ambos repositorios en la misma DB
- * const taskRepo = ORMFactory.createTaskRepository(dbContext);
- * const mockRepo = ORMFactory.createHttpMockRepository(dbContext);
+ * // En tu interceptor HTTP
+ * async intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
+ *   const serviceCode = req.headers.get('X-Service-Code');
+ *   
+ *   if (serviceCode) {
+ *     const mocks = await ORMFactory.findMocksByServiceCode(serviceCode);
+ *     const matchingMock = mocks.find(m => m.url === req.url && m.method === req.method);
+ *     
+ *     if (matchingMock) {
+ *       // Simular delay
+ *       await new Promise(resolve => setTimeout(resolve, matchingMock.delayMs));
+ *       
+ *       // Retornar respuesta mockeada
+ *       return of(new HttpResponse({
+ *         status: matchingMock.httpCodeResponseValue,
+ *         body: JSON.parse(matchingMock.responseBody),
+ *         headers: new HttpHeaders(matchingMock.headers)
+ *       }));
+ *     }
+ *   }
+ *   
+ *   return next.handle(req);
+ * }
  * ```
  */
 

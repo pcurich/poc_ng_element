@@ -11,6 +11,8 @@
     "concat:elements": "node concat.js",
     "package:elements": "npm run build:elements && npm run concat:elements",
     "package:tgz": "npm run package:elements && npm pack",
+    "export:standalone": "npm run package:elements && node -e \"const fs=require('fs-extra');const p='export-standalone';fs.ensureDirSync(p);fs.copySync('dist/http-mock-manager.js',p+'/http-mock-manager.js');fs.copySync('dist/demo.html',p+'/index.html');fs.copySync('dist/USAGE.md',p+'/README.md');console.log('✅ Exported to',p,'folder')\"",
+    "export:clean": "npm run clean:dist && npm run export:standalone",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "serve:elements": "http-server dist -p 4200",
@@ -31,13 +33,17 @@
     ".": {
       "types": "./index.d.ts",
       "default": "./dist/http-mock-manager.js"
-    }
+    },
+    "./core": "./src/core/index.ts",
+    "./src/core": "./src/core/index.ts"
   },
   "files": [
     "dist/http-mock-manager.js",
     "dist/demo.html",
+    "dist/USAGE.md",
+    "src/core",
     "README.md",
-    "USAGE.md",
+    "LIBRARY_USAGE.md",
     "index.d.ts"
   ],
   "keywords": [

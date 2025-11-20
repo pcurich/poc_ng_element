@@ -16,7 +16,7 @@
 
 import { Injectable, computed, signal } from '@angular/core';
 import { HttpMockRepository, IHttpMockStatistics, IHttpMockSearchOptions } from '../repositories/HttpMockRepository';
-import { ServiceCodeWithStats } from '../../app/components/interfaces';
+import { ServiceCodeWithStats } from '../types/service-code-stats.types';
 import { HttpMockEntity, HttpMethod, IHttpMockData } from '../models/HttpMockEntity';
 
 // ============================================================================
