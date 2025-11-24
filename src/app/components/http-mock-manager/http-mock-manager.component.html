@@ -387,9 +387,14 @@
 
         <!-- Sub-tab 1: Mock Config -->
         <div class="sub-tab-content" *ngIf="activeSubTab() === 1">
-          <div class="section-header">
-            <h4>📝 Configuración de HTTP Mock</h4>
-            <p>Define las propiedades básicas de tu HTTP mock</p>
+          <div class="section-header section-header-flex">
+            <div class="header-content">
+              <h4>📝 Configuración de HTTP Mock</h4>
+              <p>Define las propiedades básicas de tu HTTP mock</p>
+            </div>
+            <button class="btn btn-primary btn-new-record" (click)="createNewRecord()" type="button" title="Crear nuevo registro">
+              ➕
+            </button>
           </div>
 
           <div class="form-group">
@@ -727,7 +732,7 @@
                 <strong>📋 Exportar Mocks de Servicio</strong>
                 <p>Exportar todos los mocks del código de servicio actual</p>
               </div>
-              <button class="btn btn-primary" (click)="exportMocks()" [disabled]="!serviceCode.trim()">
+              <button class="btn btn-primary" (click)="exportMocks()">
                 📤 Exportar
               </button>
             </div>

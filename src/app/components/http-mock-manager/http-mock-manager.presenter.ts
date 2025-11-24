@@ -423,6 +423,30 @@ export class HttpMockManagerPresenter implements OnDestroy {
   }
 
   /**
+   * Exporta TODOS los mocks de la base de datos sin filtros
+   * Este método siempre devuelve todos los mocks independientemente del serviceCode seleccionado
+   */
+  async handleExportAllMocks(): Promise<IHttpMockData[]> {
+    try {
+      this.setLoading(true);
+      this.setLastOperation('Exporting all mocks from database...');
+
+      // Exportar sin filtro (sin serviceCode)
+      const allMocks = await this.httpMockService.exportMocks();
+      this.setLastOperation(`Exported ${allMocks.length} total mocks`);
+      
+      return allMocks;
+    } catch (error) {
+      const errorMessage = `Failed to export all mocks: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      this.setError(errorMessage);
+      this.error$.next(errorMessage);
+      return [];
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  /**
    * Importa mocks desde datos JSON
    */
   async handleImportMocks(mocksData: any[]): Promise<void> {
