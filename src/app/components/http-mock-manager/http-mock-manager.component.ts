@@ -1,7 +1,7 @@
 import { Component, OnInit, Input, Output, EventEmitter, signal, computed, ViewEncapsulation, OnDestroy, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpMethod } from '../../../core/models/HttpMockEntity';
+import { HttpMethod, IHttpMockData } from '../../../core/models/HttpMockEntity';
 import { HttpMockManagerPresenter } from './http-mock-manager.presenter';
 import { ContextOption, MockSchema, MockBody, DatabaseConfig, DatabaseIndex } from '../interfaces';
 import { ORMFactory } from '../../../core';
@@ -147,6 +147,38 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   public databaseConfig = computed(() => this.presenter.databaseConfig());
   public shouldShowDatabaseSetup = computed(() => this.presenter.shouldShowDatabaseSetup());
   public shouldShowManagementTabs = computed(() => this.presenter.shouldShowManagementTabs());
+
+  // ========== UTILITY METHODS FOR HASH ==========
+
+  /**
+   * Genera un hash SHA-256 de manera consistente para cualquier objeto
+   * @param data Objeto a hashear
+   * @returns Hash en formato hexadecimal
+   */
+  private async generateHash(data: any): Promise<string> {
+    const encoder = new TextEncoder();
+    const jsonString = JSON.stringify(data, Object.keys(data).sort()); // Orden alfabético de claves
+    const dataBuffer = encoder.encode(jsonString);
+    const hashBuffer = await window.crypto.subtle.digest('SHA-256', dataBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  /**
+   * Valida el hash de un objeto exportado
+   * @param exportedData Objeto con el hash a validar
+   * @param dataToHash Objeto original sin el campo _hash
+   * @returns true si el hash es válido
+   */
+  private async validateHash(exportedData: any, dataToHash: any): Promise<boolean> {
+    const receivedHash = exportedData._hash;
+    if (!receivedHash) return false;
+    
+    const calculatedHash = await this.generateHash(dataToHash);
+    return calculatedHash === receivedHash;
+  }
+
+  // ========== LIFECYCLE METHODS ==========
 
   async ngOnInit() {
     // Inicializar selectedContext si no está definido
@@ -392,33 +424,122 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     try {
       const txt = await file.text();
       const parsed = JSON.parse(txt);
-      
-      // Asignar campos de manera segura
-      if (parsed.selectedContext) this.selectedContext = parsed.selectedContext;
-      if (parsed.headers && typeof parsed.headers === 'object') this.headers = { ...parsed.headers };
-      if (typeof parsed.nameMock !== 'undefined') this.nameMock = String(parsed.nameMock);
-      if (typeof parsed.serviceCode !== 'undefined') this.serviceCode = String(parsed.serviceCode);
-      if (typeof parsed.url !== 'undefined') this.url = String(parsed.url);
-      if (typeof parsed.httpMethod !== 'undefined') this.httpMethod = parsed.httpMethod as HttpMethod;
-      if (typeof parsed.httpCodeResponseValue !== 'undefined') this.httpCodeResponseValue = Number(parsed.httpCodeResponseValue);
-      if (typeof parsed.delayMs !== 'undefined') this.delayMs = Number(parsed.delayMs);
-      if (typeof parsed.responseBody !== 'undefined') {
-        this.responseBody = typeof parsed.responseBody === 'string' 
-          ? parsed.responseBody 
-          : JSON.stringify(parsed.responseBody);
+
+      // Verificar si tiene hash (archivo exportado por el sistema)
+      if (!parsed._hash) {
+        // Archivo sin hash - probablemente configuración manual
+        this.loadManualConfiguration(parsed);
+        input.value = '';
+        return;
       }
+
+      // Extraer el hash recibido
+      const receivedHash = parsed._hash;
       
-      // Notificar cambio de contexto si es necesario
-      if (parsed.selectedContext) {
-        this.contextTypeChangeEvent.emit(this.selectedContext);
+      // Crear objeto sin el campo _hash para recalcular
+      const { _hash, ...dataWithoutHash } = parsed;
+
+      // Validar el hash
+      const isValid = await this.validateHash(parsed, dataWithoutHash);
+      
+      if (!isValid) {
+        this.jsonValidationMessage.set({
+          type: 'error',
+          text: '❌ Firma digital inválida. El archivo ha sido modificado o está corrupto.'
+        });
+        setTimeout(() => {
+          this.jsonValidationMessage.set(null);
+        }, 5000);
+        input.value = '';
+        return;
       }
-      
+
+      // Hash válido - procesar según el tipo
+      if (parsed.type === 'complete-database' && parsed.databaseConfig && parsed.mocks) {
+        // Importar base de datos completa
+        await this.presenter.deleteDatabase(parsed.databaseConfig.name);
+        await this.presenter.handleCreateDatabase(parsed.databaseConfig);
+        await this.presenter.handleImportMocks(parsed.mocks);
+        await this.refreshDatabaseStats();
+        
+        this.jsonValidationMessage.set({
+          type: 'success',
+          text: `✅ Base de datos completa restaurada: ${parsed.mocks.length} mocks importados. Firma verificada ✓`
+        });
+        setTimeout(() => {
+          this.jsonValidationMessage.set(null);
+        }, 3000);
+      } 
+      else if (parsed.type === 'mocks' && parsed.mocks) {
+        // Importar solo mocks
+        await this.presenter.clearAllMocks();
+        await this.presenter.handleImportMocks(parsed.mocks);
+        await this.refreshDatabaseStats();
+        
+        this.jsonValidationMessage.set({
+          type: 'success',
+          text: `✅ ${parsed.mocks.length} mocks importados correctamente. Firma verificada ✓`
+        });
+        setTimeout(() => {
+          this.jsonValidationMessage.set(null);
+        }, 3000);
+      } 
+      else {
+        this.jsonValidationMessage.set({
+          type: 'error',
+          text: '❌ Formato de archivo no reconocido.'
+        });
+        setTimeout(() => {
+          this.jsonValidationMessage.set(null);
+        }, 5000);
+      }
+
       // Limpiar input
       input.value = '';
-      
+
     } catch (e) {
       console.error('Failed to load config file', e);
+      this.jsonValidationMessage.set({
+        type: 'error',
+        text: '❌ Error al importar el archivo. Verifique que sea un JSON válido.'
+      });
+      setTimeout(() => {
+        this.jsonValidationMessage.set(null);
+      }, 5000);
     }
+  }
+
+  /**
+   * Carga configuración manual (archivos sin firma digital)
+   * @param parsed Objeto parseado del JSON
+   */
+  private loadManualConfiguration(parsed: any): void {
+    // Asignar campos de manera segura (caso config/database)
+    if (parsed.selectedContext) this.selectedContext = parsed.selectedContext;
+    if (parsed.headers && typeof parsed.headers === 'object') this.headers = { ...parsed.headers };
+    if (typeof parsed.nameMock !== 'undefined') this.nameMock = String(parsed.nameMock);
+    if (typeof parsed.serviceCode !== 'undefined') this.serviceCode = String(parsed.serviceCode);
+    if (typeof parsed.url !== 'undefined') this.url = String(parsed.url);
+    if (typeof parsed.httpMethod !== 'undefined') this.httpMethod = parsed.httpMethod as HttpMethod;
+    if (typeof parsed.httpCodeResponseValue !== 'undefined') this.httpCodeResponseValue = Number(parsed.httpCodeResponseValue);
+    if (typeof parsed.delayMs !== 'undefined') this.delayMs = Number(parsed.delayMs);
+    if (typeof parsed.responseBody !== 'undefined') {
+      this.responseBody = typeof parsed.responseBody === 'string' 
+        ? parsed.responseBody 
+        : JSON.stringify(parsed.responseBody);
+    }
+    // Notificar cambio de contexto si es necesario
+    if (parsed.selectedContext) {
+      this.contextTypeChangeEvent.emit(this.selectedContext);
+    }
+
+    this.jsonValidationMessage.set({
+      type: 'success',
+      text: '✅ Configuración manual cargada (sin firma digital).'
+    });
+    setTimeout(() => {
+      this.jsonValidationMessage.set(null);
+    }, 3000);
   }
 
   // ========== MÉTODOS DE GUARDADO ==========
@@ -684,18 +805,55 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   }
 
   async exportMocks(): Promise<void> {
-    const mocks = await this.presenter.handleExportMocks(this.serviceCode);
+    // Exportar TODOS los mocks de la base de datos sin filtros de serviceCode
+    const mocks = await this.presenter.handleExportAllMocks();
+
+    if (mocks.length === 0) {
+      this.jsonValidationMessage.set({
+        type: 'error',
+        text: '❌ No hay mocks para exportar. La base de datos está vacía.'
+      });
+      setTimeout(() => {
+        this.jsonValidationMessage.set(null);
+      }, 3000);
+      return;
+    }
+
+    // Crear objeto con metadatos
+    const exportData = {
+      type: 'mocks',
+      exportDate: new Date().toISOString(),
+      totalMocks: mocks.length,
+      mocks
+    };
+
+    // Generar hash del contenido (sin incluir el campo _hash)
+    const hash = await this.generateHash(exportData);
     
-    const json = JSON.stringify(mocks, null, 2);
+    const exportPayload = {
+      ...exportData,
+      _hash: hash
+    };
+
+    const json = JSON.stringify(exportPayload, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `mocks-${this.serviceCode || 'all'}-${Date.now()}.json`;
+    a.download = `mocks-export-${Date.now()}.json`;
     document.body.appendChild(a);
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+
+    // Mostrar mensaje de éxito
+    this.jsonValidationMessage.set({
+      type: 'success',
+      text: `✅ ${mocks.length} mocks exportados exitosamente con firma digital.`
+    });
+    setTimeout(() => {
+      this.jsonValidationMessage.set(null);
+    }, 3000);
   }
 
   // === Gestión de configuración de base de datos ===
@@ -877,15 +1035,36 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
         }))
       };
 
-      // Exportar todos los mocks de la base de datos
-      const allMocks = await this.presenter.handleExportMocks();
+      // Exportar TODOS los mocks de la base de datos sin filtros
+      const allMocks = await this.presenter.handleExportAllMocks();
 
-      // Crear el payload completo con configuración y datos
-      const completeExport = {
+      if (allMocks.length === 0) {
+        this.jsonValidationMessage.set({
+          type: 'error',
+          text: '❌ No hay mocks para exportar. La base de datos está vacía.'
+        });
+        setTimeout(() => {
+          this.jsonValidationMessage.set(null);
+        }, 5000);
+        return;
+      }
+
+      // Crear el payload completo SIN el hash (para calcularlo después)
+      const exportData = {
+        type: 'complete-database',
         databaseConfig: databaseConfig,
         exportDate: new Date().toISOString(),
         totalMocks: allMocks.length,
         mocks: allMocks
+      };
+
+      // Generar hash del contenido (sin incluir el campo _hash)
+      const hash = await this.generateHash(exportData);
+
+      // Crear payload final con el hash
+      const completeExport = {
+        ...exportData,
+        _hash: hash
       };
 
       // Descargar el archivo JSON
@@ -894,7 +1073,7 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `complete-database-export-${Date.now()}.json`;
+      a.download = `complete-database-${Date.now()}.json`;
       document.body.appendChild(a);
       a.click();
       a.remove();
