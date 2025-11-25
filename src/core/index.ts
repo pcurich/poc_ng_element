@@ -63,6 +63,50 @@ export {
   HttpMockORMConfig
 } from './providers';
 
+// 🛠️ Utilities
+export {
+  generateHash,
+  validateHash,
+  extractDataWithoutHash
+} from './utils/hash.utils';
+
+export {
+  downloadAsJson,
+  createJsonBlob,
+  readFileAsText,
+  readJsonFile,
+  generateFilenameWithTimestamp,
+  DownloadOptions
+} from './utils/file-export.utils';
+
+export {
+  detectExportType,
+  hasDigitalSignature,
+  validateMocksExport,
+  validateDatabaseExport,
+  validateDatabaseConfig,
+  validateImportedFile,
+  ExportFileType,
+  ValidationResult
+} from './utils/json-validator.utils';
+
+// 📋 Export Types
+export {
+  ExportType,
+  ExportDataBase,
+  ExportMocksData,
+  ExportDatabaseData,
+  ExportData,
+  ManualConfigData,
+  CreateExportOptions,
+  ImportResult,
+  createMocksExport,
+  createDatabaseExport,
+  isExportMocksData,
+  isExportDatabaseData,
+  isManualConfigData
+} from './types/export.types';
+
 // Importar tipos para uso interno
 import { IDbContext } from './context/IDbContext';
 import { DbContext } from './context/DbContext';

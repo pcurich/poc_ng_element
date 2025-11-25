@@ -829,6 +829,34 @@
 
 // ========== VALIDATION MESSAGES ==========
 
+// Global validation message - Appears at top of component
+.global-validation-message {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    margin: 0;
+    padding: var(--space-sm) var(--space-md);
+    font-size: var(--font-xs);
+    font-weight: 600;
+    line-height: 1.3;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    animation: slideDown 0.3s ease-out;
+    
+    &.success-message {
+        background: linear-gradient(135deg, rgba(25, 135, 84, 0.95), rgba(34, 139, 34, 0.95));
+        border-bottom: 2px solid rgba(25, 135, 84, 1);
+        color: #fff;
+    }
+    
+    &.error-message {
+        background: linear-gradient(135deg, rgba(220, 53, 69, 0.95), rgba(200, 35, 51, 0.95));
+        border-bottom: 2px solid rgba(220, 53, 69, 1);
+        color: #fff;
+    }
+}
+
+// Local validation message (if still needed in specific contexts)
 .validation-message {
     margin: var(--space-sm) 0;
     padding: var(--space-sm);
@@ -849,6 +877,17 @@
         background: rgba(220, 53, 69, 0.1);
         border: 1px solid rgba(220, 53, 69, 0.3);
         color: #58151c;
+    }
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
 

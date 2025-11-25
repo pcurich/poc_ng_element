@@ -15,6 +15,13 @@
     </div>
   </div>
 
+  <!-- Mensaje de validación global - Visible en cualquier flujo -->
+  <div class="global-validation-message" *ngIf="jsonValidationMessage()" 
+       [class.success-message]="jsonValidationMessage()?.type === 'success'"
+       [class.error-message]="jsonValidationMessage()?.type === 'error'">
+    {{ jsonValidationMessage()?.text }}
+  </div>
+
   <!-- Contenido principal -->
   <div class="content" [class.collapsed]="!showForm()">
 
@@ -684,13 +691,6 @@
             <small class="field-help">Ingrese un JSON válido que se devolverá como respuesta simulada</small>
           </div>
 
-          <!-- Mensaje de validación JSON -->
-          <div class="validation-message" *ngIf="jsonValidationMessage()" 
-               [class.success-message]="jsonValidationMessage()?.type === 'success'"
-               [class.error-message]="jsonValidationMessage()?.type === 'error'">
-            {{ jsonValidationMessage()?.text }}
-          </div>
-
           <!-- Save actions for Body -->
           <div class="form-actions">
             <button class="btn btn-success" (click)="saveContext()"
@@ -715,35 +715,15 @@
 
           <!-- Export Section -->
           <div class="export-section">
-            <h5>📤 Opciones de Exportación</h5>
+            <h5>📤 Exportar Mocks</h5>
 
             <div class="export-option">
               <div class="option-info">
-                <strong>📄 Exportar Configuración</strong>
-                <p>Exportar la configuración actual de la base de datos (solo estructura)</p>
-              </div>
-              <button class="btn btn-primary" (click)="downloadConfig()">
-                📅 Descargar
-              </button>
-            </div>
-
-            <div class="export-option">
-              <div class="option-info">
-                <strong>📋 Exportar Mocks de Servicio</strong>
-                <p>Exportar todos los mocks del código de servicio actual</p>
+                <strong>📋 Exportar Todos los Mocks</strong>
+                <p>Exporta todos los mocks HTTP almacenados en la base de datos con firma digital para validación de integridad</p>
               </div>
               <button class="btn btn-primary" (click)="exportMocks()">
-                📤 Exportar
-              </button>
-            </div>
-
-            <div class="export-option">
-              <div class="option-info">
-                <strong>🗜️ Exportar Base de Datos Completa</strong>
-                <p>Exportar toda la base de datos con todos los mocks y configuración</p>
-              </div>
-              <button class="btn btn-primary" (click)="exportCompleteDatabase()">
-                🏢 Exportar BD
+                📤 Exportar Mocks
               </button>
             </div>
           </div>
