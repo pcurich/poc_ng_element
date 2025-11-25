@@ -43,7 +43,6 @@ export class HttpMockManagerPresenter implements OnDestroy {
   private readonly _selectedServiceCode = signal<string | null>(null);
   private readonly _lastOperation = signal<string | null>(null);
   private readonly _availableServiceCodes = signal<ServiceCodeWithStats[]>([]);
-
   
   // === Estado de la base de datos ===
   private readonly _databaseStatus = signal<DatabaseStatus>({
@@ -61,7 +60,6 @@ export class HttpMockManagerPresenter implements OnDestroy {
   public readonly selectedServiceCode = this._selectedServiceCode.asReadonly();
   public readonly lastOperation = this._lastOperation.asReadonly();
   public readonly availableServiceCodes = this._availableServiceCodes.asReadonly();
-
   
   // === Estado de la base de datos ===
   public readonly databaseStatus = this._databaseStatus.asReadonly();
@@ -168,8 +166,8 @@ export class HttpMockManagerPresenter implements OnDestroy {
       this.setLastOperation(`Changing context to: ${contextOption.value}`);
 
       // Guardar en localStorage
-      localStorage.setItem('useMock', JSON.stringify(contextOption.useMock));
-      localStorage.setItem('selectedContext', JSON.stringify(contextOption));
+      window.localStorage.setItem('useMock', JSON.stringify(contextOption.useMock));
+      window.localStorage.setItem('selectedContext', JSON.stringify(contextOption));
 
       // Si el contexto usa mocks, cargar estadísticas
       if (contextOption.useMock) {
