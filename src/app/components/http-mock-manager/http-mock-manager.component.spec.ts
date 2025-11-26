@@ -29,8 +29,10 @@ describe('HttpMockManagerComponent', () => {
       'refreshStatistics',
       'loadDefaultDatabaseConfig',
       'findMockByServiceCode',
+      'findMockByName',
       'shouldShowDatabaseSetup',
       'shouldShowManagementTabs',
+      'emitValidationMessage',
       'ngOnDestroy'
     ]);
 
@@ -46,7 +48,9 @@ describe('HttpMockManagerComponent', () => {
       onMockCreated: { subscribe: jasmine.createSpy('subscribe') },
       onMockDeleted: { subscribe: jasmine.createSpy('subscribe') },
       onMocksLoaded: { subscribe: jasmine.createSpy('subscribe') },
-      onError: { subscribe: jasmine.createSpy('subscribe') }
+      onError: { subscribe: jasmine.createSpy('subscribe') },
+      onValidationMessage: { subscribe: jasmine.createSpy('subscribe') },
+      onStateChanged: { subscribe: jasmine.createSpy('subscribe') }
     };
 
     presenterSpy.initialize.and.returnValue(Promise.resolve());
@@ -67,7 +71,7 @@ describe('HttpMockManagerComponent', () => {
 
   describe('Component Initialization', () => {
     it('#Should-initialize-component-with-default-values', () => {
-      expect(component.showForm()).toBe(true);
+      expect(component.showForm()).toBe(false);
     });
 
     it('#Should-set-default-context-options', () => {
@@ -474,7 +478,7 @@ describe('HttpMockManagerComponent', () => {
       
       component.validateJson();
       
-      expect(component.jsonValidationMessage()?.type).toBe('success');
+      expect(mockPresenter.emitValidationMessage).toHaveBeenCalledWith('success', jasmine.stringContaining('válido'), 3000);
     });
 
     it('#Should-reject-invalid-json', () => {
@@ -482,7 +486,7 @@ describe('HttpMockManagerComponent', () => {
       
       component.validateJson();
       
-      expect(component.jsonValidationMessage()?.type).toBe('error');
+      expect(mockPresenter.emitValidationMessage).toHaveBeenCalledWith('error', jasmine.stringContaining('inválido'), 5000);
     });
 
     it('#Should-format-valid-json', () => {
@@ -498,7 +502,7 @@ describe('HttpMockManagerComponent', () => {
       
       component.formatJson();
       
-      expect(component.jsonValidationMessage()?.type).toBe('error');
+      expect(mockPresenter.emitValidationMessage).toHaveBeenCalledWith('error', jasmine.stringContaining('formatear'), 5000);
     });
 
     it('#Should-clear-validation-message-after-timeout', (done) => {
@@ -668,7 +672,7 @@ describe('HttpMockManagerComponent', () => {
       
       await component.exportMocks();
       
-      expect(component.jsonValidationMessage()?.type).toBe('error');
+      expect(mockPresenter.emitValidationMessage).toHaveBeenCalledWith('error', jasmine.stringContaining('No hay mocks'), 3000);
     });
 
     it('#Should-show-success-message-after-export', async () => {
@@ -677,7 +681,8 @@ describe('HttpMockManagerComponent', () => {
       
       await component.exportMocks();
       
-      expect(component.jsonValidationMessage()?.type).toBe('success');
+      // Verificar que se llamó con el mensaje correcto (del diccionario centralizado)
+      expect(mockPresenter.emitValidationMessage).toHaveBeenCalledWith('success', jasmine.stringContaining('exportado'), 3000);
     });
   });
 
@@ -872,7 +877,11 @@ describe('HttpMockManagerComponent', () => {
       component.nameMock = 'Test Mock';
       component.url = '/test';
       component.serviceCode = 'test';
+      component.httpMethod = 'GET';
+      component.httpCodeResponseValue = 200;
+      component.delayMs = 1000;
       mockPresenter.findMockByServiceCode.and.returnValue(Promise.resolve(null));
+      mockPresenter.findMockByName.and.returnValue(Promise.resolve(null));
       mockPresenter.handleSaveMockSchema.and.returnValue(Promise.resolve({ id: '1'  } as any as HttpMockEntity));
       mockPresenter.handleSaveMockBody.and.returnValue(Promise.resolve());
       mockPresenter.refreshStatistics.and.returnValue(Promise.resolve());
@@ -912,8 +921,12 @@ describe('HttpMockManagerComponent', () => {
       component.nameMock = 'Test';
       component.url = '/test';
       component.serviceCode = 'existing';
+      component.httpMethod = 'GET';
+      component.httpCodeResponseValue = 200;
+      component.delayMs = 1000;
       const existingMock = { id: 'existing-id', name: 'Old', serviceCode: 'existing', url: '/old', method: 'GET', httpCodeResponseValue: 200, delayMs: 1000, responseBody: '{}' } as any as HttpMockEntity;
       mockPresenter.findMockByServiceCode.and.returnValue(Promise.resolve(existingMock));
+      mockPresenter.findMockByName.and.returnValue(Promise.resolve(null));
       mockPresenter.handleUpdateMockSchema.and.returnValue(Promise.resolve({ id: 'existing-id' } as any as HttpMockEntity));
       mockPresenter.handleSaveMockBody.and.returnValue(Promise.resolve());
       mockPresenter.refreshStatistics.and.returnValue(Promise.resolve());
@@ -930,7 +943,12 @@ describe('HttpMockManagerComponent', () => {
       component.activeGroup.set('http');
       component.nameMock = 'Success Test';
       component.url = '/success';
+      component.serviceCode = 'success';
+      component.httpMethod = 'GET';
+      component.httpCodeResponseValue = 200;
+      component.delayMs = 1000;
       mockPresenter.findMockByServiceCode.and.returnValue(Promise.resolve(null));
+      mockPresenter.findMockByName.and.returnValue(Promise.resolve(null));
       mockPresenter.handleSaveMockSchema.and.returnValue(Promise.resolve({ id: 'new-id' } as any as HttpMockEntity));
       mockPresenter.handleSaveMockBody.and.returnValue(Promise.resolve());
       mockPresenter.refreshStatistics.and.returnValue(Promise.resolve());
@@ -940,14 +958,20 @@ describe('HttpMockManagerComponent', () => {
       
       await component.saveContext();
       
-      expect(component.jsonValidationMessage()?.type).toBe('success');
+      // El mensaje de éxito se emite desde el presenter cuando se guarda el mock
+      expect(component.showSaveConfirmation()).toBe(true);
     });
 
     it('#Should-show-save-confirmation-after-successful-save', async () => {
       component.activeGroup.set('http');
       component.nameMock = 'Confirm Test';
       component.url = '/confirm';
+      component.serviceCode = 'confirm';
+      component.httpMethod = 'GET';
+      component.httpCodeResponseValue = 200;
+      component.delayMs = 1000;
       mockPresenter.findMockByServiceCode.and.returnValue(Promise.resolve(null));
+      mockPresenter.findMockByName.and.returnValue(Promise.resolve(null));
       mockPresenter.handleSaveMockSchema.and.returnValue(Promise.resolve({ id: 'confirm-id' } as any as HttpMockEntity));
       mockPresenter.handleSaveMockBody.and.returnValue(Promise.resolve());
       mockPresenter.refreshStatistics.and.returnValue(Promise.resolve());
@@ -964,7 +988,12 @@ describe('HttpMockManagerComponent', () => {
       component.activeGroup.set('http');
       component.nameMock = 'Event Test';
       component.url = '/event';
+      component.serviceCode = 'event';
+      component.httpMethod = 'GET';
+      component.httpCodeResponseValue = 200;
+      component.delayMs = 1000;
       mockPresenter.findMockByServiceCode.and.returnValue(Promise.resolve(null));
+      mockPresenter.findMockByName.and.returnValue(Promise.resolve(null));
       mockPresenter.handleSaveMockSchema.and.returnValue(Promise.resolve({ id: 'event-id' } as any as HttpMockEntity));
       mockPresenter.handleSaveMockBody.and.returnValue(Promise.resolve());
       mockPresenter.refreshStatistics.and.returnValue(Promise.resolve());
@@ -985,8 +1014,13 @@ describe('HttpMockManagerComponent', () => {
       component.activeGroup.set('http');
       component.nameMock = 'Body Test';
       component.url = '/body';
+      component.serviceCode = 'body';
+      component.httpMethod = 'GET';
+      component.httpCodeResponseValue = 200;
+      component.delayMs = 1000;
       component.responseBody = '{"body": true}';
       mockPresenter.findMockByServiceCode.and.returnValue(Promise.resolve(null));
+      mockPresenter.findMockByName.and.returnValue(Promise.resolve(null));
       mockPresenter.handleSaveMockSchema.and.returnValue(Promise.resolve({ id: 'body-id' } as any as HttpMockEntity));
       mockPresenter.handleSaveMockBody.and.returnValue(Promise.resolve());
       mockPresenter.refreshStatistics.and.returnValue(Promise.resolve());
@@ -1046,8 +1080,7 @@ describe('HttpMockManagerComponent', () => {
       
       await component.onFileSelected(event);
       
-      expect(component.jsonValidationMessage()?.type).toBe('error');
-      expect(component.jsonValidationMessage()?.text).toContain('inválida');
+      expect(mockPresenter.emitValidationMessage).toHaveBeenCalledWith('error', jasmine.stringContaining('inválida'), 5000);
       expect(event.target.value).toBe('');
     });
 
@@ -1058,7 +1091,7 @@ describe('HttpMockManagerComponent', () => {
       
       await component.onFileSelected(event);
       
-      expect(component.jsonValidationMessage()?.type).toBe('error');
+      expect(mockPresenter.emitValidationMessage).toHaveBeenCalledWith('error', jasmine.any(String), 5000);
     })
 
     it('#Should-show-error-for-invalid-structure', async () => {
@@ -1071,7 +1104,7 @@ describe('HttpMockManagerComponent', () => {
       
       await component.onFileSelected(event);
       
-      expect(component.jsonValidationMessage()?.type).toBe('error');
+      expect(mockPresenter.emitValidationMessage).toHaveBeenCalledWith('error', jasmine.any(String), 5000);
       expect(event.target.value).toBe('');
     });
 
@@ -1095,7 +1128,7 @@ describe('HttpMockManagerComponent', () => {
       expect(mockPresenter.deleteDatabase).toHaveBeenCalledWith('TestDB');
       expect(mockPresenter.handleCreateDatabase).toHaveBeenCalledWith(dbConfig);
       expect(mockPresenter.handleImportMocks).toHaveBeenCalled();
-      expect(component.jsonValidationMessage()?.type).toBe('success');
+      expect(mockPresenter.emitValidationMessage).toHaveBeenCalledWith('success', jasmine.stringContaining('restaurada'), 3000);
       expect(event.target.value).toBe('');
     });
 
@@ -1116,8 +1149,7 @@ describe('HttpMockManagerComponent', () => {
       
       await component.onFileSelected(event);
       
-      expect(component.jsonValidationMessage()?.text).toContain('restaurada');
-      expect(component.jsonValidationMessage()?.text).toContain('Firma verificada');
+      expect(mockPresenter.emitValidationMessage).toHaveBeenCalledWith('success', jasmine.stringMatching(/restaurada.*Firma verificada/), 3000);
     });
 
     it('#Should-import-mocks-only-with-valid-hash', async () => {
@@ -1140,7 +1172,7 @@ describe('HttpMockManagerComponent', () => {
       
       expect(mockPresenter.clearAllMocks).toHaveBeenCalled();
       expect(mockPresenter.handleImportMocks).toHaveBeenCalled();
-      expect(component.jsonValidationMessage()?.type).toBe('success');
+      expect(mockPresenter.emitValidationMessage).toHaveBeenCalledWith('success', jasmine.stringContaining('importados'), 3000);
     });
 
     it('#Should-show-success-message-for-mocks-import', async () => {
@@ -1161,8 +1193,7 @@ describe('HttpMockManagerComponent', () => {
       
       await component.onFileSelected(event);
       
-      expect(component.jsonValidationMessage()?.text).toContain('2 mocks importados');
-      expect(component.jsonValidationMessage()?.text).toContain('Firma verificada');
+      expect(mockPresenter.emitValidationMessage).toHaveBeenCalledWith('success', jasmine.stringMatching(/2 mocks importados.*Firma verificada/), 3000);
     });
 
     it('#Should-set-success-message-after-import', async () => {
@@ -1179,7 +1210,7 @@ describe('HttpMockManagerComponent', () => {
       
       await component.onFileSelected(event);
       
-      expect(component.jsonValidationMessage()?.type).toBe('success');
+      expect(mockPresenter.emitValidationMessage).toHaveBeenCalledWith('success', jasmine.any(String), 3000);
     });
 
     it('#Should-show-error-for-unrecognized-format', async () => {
@@ -1192,8 +1223,7 @@ describe('HttpMockManagerComponent', () => {
       
       await component.onFileSelected(event);
       
-      expect(component.jsonValidationMessage()?.type).toBe('error');
-      expect(component.jsonValidationMessage()?.text).toContain('no reconocido');
+      expect(mockPresenter.emitValidationMessage).toHaveBeenCalledWith('error', jasmine.stringContaining('no reconocido'), 5000);
     });
 
     it('#Should-handle-read-file-error', async () => {
@@ -1202,8 +1232,7 @@ describe('HttpMockManagerComponent', () => {
       
       await component.onFileSelected(event);
       
-      expect(component.jsonValidationMessage()?.type).toBe('error');
-      expect(component.jsonValidationMessage()?.text).toContain('Error al importar');
+      expect(mockPresenter.emitValidationMessage).toHaveBeenCalledWith('error', jasmine.stringContaining('Error al importar'), 5000);
     });
 
     it('#Should-show-error-message-on-invalid-json', async () => {
@@ -1212,7 +1241,7 @@ describe('HttpMockManagerComponent', () => {
       
       await component.onFileSelected(event);
       
-      expect(component.jsonValidationMessage()?.type).toBe('error');
+      expect(mockPresenter.emitValidationMessage).toHaveBeenCalledWith('error', jasmine.any(String), 5000);
     });
 
     it('#Should-call-refreshDatabaseStats-after-database-import', async () => {

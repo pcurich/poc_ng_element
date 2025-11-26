@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpMethod } from '../../../core/models/HttpMockEntity';
 import { HttpMockManagerPresenter } from './http-mock-manager.presenter';
-import { ContextOption, MockSchema, MockBody, DatabaseConfig, DatabaseIndex } from '../interfaces';
+import { ContextOption, MockSchema, MockBody, DatabaseConfig, DatabaseIndex, ValidationMessage } from '../interfaces';
 import {
   ORMFactory,
   generateHash,
@@ -14,7 +14,8 @@ import {
   createMocksExport,
   validateImportedFile,
   isExportMocksData,
-  isExportDatabaseData
+  isExportDatabaseData,
+  ValidationMessages
 } from '../../../core';
 
 /**
@@ -91,7 +92,7 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   // === Nuevas propiedades para funcionalidad expandida ===
   public showDeleteConfirmation: boolean = false;
   public showSaveConfirmation = signal<boolean>(false);
-  public jsonValidationMessage = signal<{ type: 'success' | 'error'; text: string } | null>(null);
+  public jsonValidationMessage = signal<ValidationMessage | null>(null);
 
   // === Service Code Selection ===
   public selectedServiceCodeForLoad: string = '';
@@ -128,6 +129,26 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   public shouldShowDatabaseSetup = computed(() => this.presenter.shouldShowDatabaseSetup());
   public shouldShowManagementTabs = computed(() => this.presenter.shouldShowManagementTabs());
 
+  // === Validación de formulario ===
+  public isFormValid = computed(() => {
+    console.log('🔍 Validating form with values:', {  
+      nameMock: this.nameMock,
+      url: this.url,
+      serviceCode: this.serviceCode,
+      httpMethod: this.httpMethod,
+      httpCodeResponseValue: this.httpCodeResponseValue,
+      delayMs: this.delayMs
+    })
+    return !!(
+      this.nameMock.trim() &&
+      this.url.trim() &&
+      this.serviceCode.trim() &&
+      this.httpMethod &&
+      this.httpCodeResponseValue &&
+      (this.delayMs !== null || this.delayMs !== undefined)
+    );
+  });
+
   // ========== LIFECYCLE METHODS ==========
 
   async ngOnInit() {
@@ -162,19 +183,42 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   private subscribeToPresenterEvents(): void {
     // Suscribirse a eventos del presenter para propagar al exterior
     this.presenter.events.onMockCreated.subscribe(mock => {
-      // Mock created
+      console.log('✅ Mock created:', mock);
+      const message = ValidationMessages.MOCK_CREATED(mock.name || 'Sin nombre');
+      this.jsonValidationMessage.set(message);
+      setTimeout(() => this.jsonValidationMessage.set(null), message.durationMs);
     });
 
     this.presenter.events.onMockDeleted.subscribe(mockId => {
-      // Mock deleted
+      console.log('🗑️ Mock deleted:', mockId);
+      const message = ValidationMessages.MOCK_DELETED();
+      this.jsonValidationMessage.set(message);
+      setTimeout(() => this.jsonValidationMessage.set(null), message.durationMs);
     });
 
     this.presenter.events.onMocksLoaded.subscribe(mocks => {
-      // Mocks loaded
+      console.log('📦 Mocks loaded:', mocks.length);
+      const message = ValidationMessages.MOCKS_LOADED(mocks.length);
+      this.jsonValidationMessage.set(message);
+      setTimeout(() => this.jsonValidationMessage.set(null), message.durationMs);
     });
 
     this.presenter.events.onError.subscribe(error => {
       console.error('🎭 Presenter Error:', error);
+      const message = ValidationMessages.PRESENTER_ERROR(error);
+      this.jsonValidationMessage.set(message);
+      setTimeout(() => this.jsonValidationMessage.set(null), message.durationMs);
+    });
+
+    // Suscribirse a eventos de mensajes de validación
+    this.presenter.events.onValidationMessage.subscribe(message => {
+      this.jsonValidationMessage.set(message);
+      
+      // Auto-limpiar mensaje después del tiempo especificado
+      const duration = message.durationMs || 3000;
+      setTimeout(() => {
+        this.jsonValidationMessage.set(null);
+      }, duration);
     });
   }
 
@@ -355,13 +399,8 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
       const isValid = await validateHash(parsed, dataWithoutHash);
 
       if (!isValid) {
-        this.jsonValidationMessage.set({
-          type: 'error',
-          text: '❌ Firma digital inválida. El archivo ha sido modificado o está corrupto.'
-        });
-        setTimeout(() => {
-          this.jsonValidationMessage.set(null);
-        }, 5000);
+        const message = ValidationMessages.INVALID_SIGNATURE();
+        this.presenter.emitValidationMessage(message.type, message.text, message.durationMs);
         input.value = '';
         return;
       }
@@ -370,13 +409,8 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
       const validationResult = validateImportedFile(dataWithoutHash);
 
       if (!validationResult.isValid) {
-        this.jsonValidationMessage.set({
-          type: 'error',
-          text: `❌ ${validationResult.errors.join(', ')}`
-        });
-        setTimeout(() => {
-          this.jsonValidationMessage.set(null);
-        }, 5000);
+        const message = ValidationMessages.VALIDATION_ERRORS(validationResult.errors);
+        this.presenter.emitValidationMessage(message.type, message.text, message.durationMs);
         input.value = '';
         return;
       }
@@ -389,13 +423,8 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
         await this.presenter.handleImportMocks(parsed.mocks);
         await this.refreshDatabaseStats();
 
-        this.jsonValidationMessage.set({
-          type: 'success',
-          text: `✅ Base de datos completa restaurada: ${parsed.mocks.length} mocks importados. Firma verificada ✓`
-        });
-        setTimeout(() => {
-          this.jsonValidationMessage.set(null);
-        }, 3000);
+        const message = ValidationMessages.DATABASE_RESTORED(parsed.mocks.length);
+        this.presenter.emitValidationMessage(message.type, message.text, message.durationMs);
       }
       else if (isExportMocksData(parsed)) {
         // Importar solo mocks
@@ -403,22 +432,12 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
         await this.presenter.handleImportMocks(parsed.mocks);
         await this.refreshDatabaseStats();
 
-        this.jsonValidationMessage.set({
-          type: 'success',
-          text: `✅ ${parsed.mocks.length} mocks importados correctamente. Firma verificada ✓`
-        });
-        setTimeout(() => {
-          this.jsonValidationMessage.set(null);
-        }, 3000);
+        const message = ValidationMessages.IMPORT_SUCCESS_WITH_SIGNATURE(parsed.mocks.length);
+        this.presenter.emitValidationMessage(message.type, message.text, message.durationMs);
       }
       else {
-        this.jsonValidationMessage.set({
-          type: 'error',
-          text: '❌ Formato de archivo no reconocido.'
-        });
-        setTimeout(() => {
-          this.jsonValidationMessage.set(null);
-        }, 5000);
+        const message = ValidationMessages.INVALID_FILE_FORMAT();
+        this.presenter.emitValidationMessage(message.type, message.text, message.durationMs);
       }
 
       // Limpiar input
@@ -426,13 +445,8 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
 
     } catch (e) {
       console.error('Failed to load config file', e);
-      this.jsonValidationMessage.set({
-        type: 'error',
-        text: '❌ Error al importar el archivo. Verifique que sea un JSON válido.'
-      });
-      setTimeout(() => {
-        this.jsonValidationMessage.set(null);
-      }, 5000);
+      const message = ValidationMessages.IMPORT_ERROR();
+      this.presenter.emitValidationMessage(message.type, message.text, message.durationMs);
     }
   }
 
@@ -460,13 +474,8 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
       this.contextTypeChangeEvent.emit(this.selectedContext);
     }
 
-    this.jsonValidationMessage.set({
-      type: 'success',
-      text: '✅ Configuración manual cargada (sin firma digital).'
-    });
-    setTimeout(() => {
-      this.jsonValidationMessage.set(null);
-    }, 3000);
+    const message = ValidationMessages.MANUAL_CONFIG_LOADED();
+    this.presenter.emitValidationMessage(message.type, message.text, message.durationMs);
   }
 
   // ========== MÉTODOS DE GUARDADO ==========
@@ -490,9 +499,17 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
 
   private async saveCompleteMock(): Promise<boolean> {
     try {
-      // Validar que los campos requeridos estén completos
-      if (!this.nameMock.trim() || !this.url.trim()) {
-        console.error('❌ Missing required fields: nameMock and url are required');
+      // Validar que TODOS los campos requeridos estén completos
+      if (!this.nameMock.trim() || 
+          !this.url.trim() || 
+          !this.serviceCode.trim() || 
+          !this.httpMethod || 
+          !this.httpCodeResponseValue || 
+          this.delayMs === null || 
+          this.delayMs === undefined) {
+        console.error('❌ Missing required fields: nameMock, url, serviceCode, httpMethod, httpCodeResponseValue and delayMs are required');
+        const message = ValidationMessages.MISSING_REQUIRED_FIELDS();
+        this.presenter.emitValidationMessage(message.type, message.text, message.durationMs);
         return false;
       }
 
@@ -511,19 +528,21 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
       let isUpdate = false;
 
       // Validar si existe un mock con el mismo serviceCode
-      if (this.serviceCode && this.serviceCode.trim() !== '') {
-        const existingMock = await this.presenter.findMockByServiceCode(this.serviceCode);
+      const existingMockByServiceCode = await this.presenter.findMockByServiceCode(this.serviceCode);
+      
+      // Validar si existe un mock con el mismo nombre
+      const existingMockByName = await this.presenter.findMockByName(this.nameMock);
 
-        if (existingMock && existingMock.id) {
-          console.log(`🔄 Mock with serviceCode "${this.serviceCode}" already exists. Updating...`);
-          savedMock = await this.presenter.handleUpdateMockSchema(existingMock.id, schema);
-          isUpdate = true;
-        } else {
-          // Si no existe, crear nuevo
-          savedMock = await this.presenter.handleSaveMockSchema(schema);
-        }
+      if (existingMockByServiceCode && existingMockByServiceCode.id) {
+        console.log(`🔄 Mock with serviceCode "${this.serviceCode}" already exists. Updating...`);
+        savedMock = await this.presenter.handleUpdateMockSchema(existingMockByServiceCode.id, schema);
+        isUpdate = true;
+      } else if (existingMockByName && existingMockByName.id) {
+        console.log(`🔄 Mock with name "${this.nameMock}" already exists. Updating...`);
+        savedMock = await this.presenter.handleUpdateMockSchema(existingMockByName.id, schema);
+        isUpdate = true;
       } else {
-        // Si no hay serviceCode, crear nuevo (o manejar según reglas de negocio)
+        // Si no existe ninguno, crear nuevo
         savedMock = await this.presenter.handleSaveMockSchema(schema);
       }
 
@@ -537,7 +556,6 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
 
         await this.presenter.handleSaveMockBody(mockBody, savedMock.id);
 
-
         // Actualizar estadísticas después de guardar el mock
         await this.refreshDatabaseStats();
 
@@ -545,19 +563,8 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
         this.saveMockSchemaEvent.emit(schema);
         this.saveMockBodyEvent.emit(mockBody);
 
-        // Mostrar mensaje de éxito
-        this.jsonValidationMessage.set({
-          type: 'success',
-          text: isUpdate
-            ? `✅ Mock "${this.nameMock}" actualizado correctamente`
-            : `✅ Mock "${this.nameMock}" creado correctamente`
-        });
-
-        setTimeout(() => {
-          this.jsonValidationMessage.set(null);
-        }, 3000);
-
         // NO hacer reset automático - se manejará en la confirmación
+        // Los mensajes de éxito ya se emiten desde el presenter
         return true;
       }
 
@@ -565,10 +572,8 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
       return false;
     } catch (error) {
       console.error('❌ Error al guardar mock completo:', error);
-      this.jsonValidationMessage.set({
-        type: 'error',
-        text: `❌ Error al guardar: ${(error as Error).message}`
-      });
+      const message = ValidationMessages.SAVE_ERROR((error as Error).message);
+      this.presenter.emitValidationMessage(message.type, message.text, message.durationMs);
       return false;
     }
   }
@@ -602,16 +607,9 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     // Agregar la cabecera con el valor por defecto
     this.headers[headerName] = defaultValue;
 
-    // Mostrar confirmación de éxito
-    this.jsonValidationMessage.set({
-      type: 'success',
-      text: `Cabecera "${headerName}" agregada exitosamente`
-    });
-
-    // Limpiar mensaje después de 2 segundos
-    setTimeout(() => {
-      this.jsonValidationMessage.set(null);
-    }, 2000);
+    // Emitir mensaje de éxito usando presenter
+    const message = ValidationMessages.HEADER_ADDED(headerName);
+    this.presenter.emitValidationMessage(message.type, message.text, message.durationMs);
 
     // Emitir evento para notificar cambios en headers
     this.saveHeadersEvent.emit(this.headers);
@@ -759,13 +757,8 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     const mocks = await this.presenter.handleExportAllMocks();
 
     if (mocks.length === 0) {
-      this.jsonValidationMessage.set({
-        type: 'error',
-        text: '❌ No hay mocks para exportar. La base de datos está vacía.'
-      });
-      setTimeout(() => {
-        this.jsonValidationMessage.set(null);
-      }, 3000);
+      const message = ValidationMessages.NO_MOCKS_TO_EXPORT();
+      this.presenter.emitValidationMessage(message.type, message.text, message.durationMs);
       return;
     }
 
@@ -787,13 +780,8 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     });
 
     // Mostrar mensaje de éxito
-    this.jsonValidationMessage.set({
-      type: 'success',
-      text: `✅ ${mocks.length} mocks exportados exitosamente con firma digital.`
-    });
-    setTimeout(() => {
-      this.jsonValidationMessage.set(null);
-    }, 3000);
+    const message = ValidationMessages.MOCKS_EXPORTED(mocks.length);
+    this.presenter.emitValidationMessage(message.type, message.text, message.durationMs);
   }
 
   // === Gestión de configuración de base de datos ===
@@ -905,26 +893,12 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     try {
       const parsed = JSON.parse(this.responseBody);
       this.responseBody = JSON.stringify(parsed, null, 2);
-      this.jsonValidationMessage.set({
-        type: 'success',
-        text: '🎨 JSON formateado correctamente'
-      });
-
-      // Limpiar el mensaje después de 2 segundos
-      setTimeout(() => {
-        this.jsonValidationMessage.set(null);
-      }, 2000);
+      const message = ValidationMessages.JSON_FORMATTED();
+      this.presenter.emitValidationMessage(message.type, message.text, message.durationMs);
     } catch (error) {
       console.error('❌ Invalid JSON format:', error);
-      this.jsonValidationMessage.set({
-        type: 'error',
-        text: `❌ No se puede formatear: JSON inválido - ${(error as Error).message}`
-      });
-
-      // Limpiar el mensaje después de 5 segundos para errores
-      setTimeout(() => {
-        this.jsonValidationMessage.set(null);
-      }, 5000);
+      const message = ValidationMessages.JSON_FORMAT_ERROR((error as Error).message);
+      this.presenter.emitValidationMessage(message.type, message.text, message.durationMs);
     }
   }
 
@@ -932,26 +906,12 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     try {
       JSON.parse(this.responseBody);
       console.log('✅ JSON is valid');
-      this.jsonValidationMessage.set({
-        type: 'success',
-        text: '✅ JSON válido - La estructura es correcta'
-      });
-
-      // Limpiar el mensaje después de 3 segundos
-      setTimeout(() => {
-        this.jsonValidationMessage.set(null);
-      }, 3000);
+      const message = ValidationMessages.JSON_VALID();
+      this.presenter.emitValidationMessage(message.type, message.text, message.durationMs);
     } catch (error) {
       console.error('❌ Invalid JSON:', error);
-      this.jsonValidationMessage.set({
-        type: 'error',
-        text: `❌ JSON inválido: ${(error as Error).message}`
-      });
-
-      // Limpiar el mensaje después de 5 segundos para errores
-      setTimeout(() => {
-        this.jsonValidationMessage.set(null);
-      }, 5000);
+      const message = ValidationMessages.JSON_INVALID((error as Error).message);
+      this.presenter.emitValidationMessage(message.type, message.text, message.durationMs);
     }
   }
 
@@ -1008,7 +968,6 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
 
   async reinitializeDatabase(): Promise<void> {
     try {
-      debugger;
       console.log('🔄 Reinitializing database system...');
 
       // Primero limpiar todos los registros de la base de datos

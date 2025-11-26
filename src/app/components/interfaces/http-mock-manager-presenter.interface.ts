@@ -22,6 +22,20 @@ export interface IHttpMockManagerPresenterState {
 }
 
 /**
+ * Tipo de mensaje de validación
+ */
+export type ValidationMessageType = 'success' | 'error' | 'warning' | 'info';
+
+/**
+ * Estructura de mensaje de validación
+ */
+export interface ValidationMessage {
+  type: ValidationMessageType;
+  text: string;
+  durationMs?: number;
+}
+
+/**
  * Eventos reactivos del presenter
  */
 export interface IHttpMockManagerPresenterEvents {
@@ -30,4 +44,5 @@ export interface IHttpMockManagerPresenterEvents {
   onMocksLoaded: Observable<HttpMockEntity[]>;
   onError: Observable<string>;
   onStateChanged: Observable<IHttpMockManagerPresenterState>;
+  onValidationMessage: Observable<ValidationMessage>;
 }
