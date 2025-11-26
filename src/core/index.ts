@@ -70,6 +70,9 @@ export {
   extractDataWithoutHash
 } from './utils/hash.utils';
 
+// 📚 Constants & Dictionaries
+export { ValidationMessages, createValidationMessage } from './constants/validation-messages';
+
 export {
   downloadAsJson,
   createJsonBlob,

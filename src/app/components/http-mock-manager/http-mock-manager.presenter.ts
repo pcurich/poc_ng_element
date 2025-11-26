@@ -32,6 +32,7 @@ export class HttpMockManagerPresenter implements OnDestroy {
   private readonly mockDeleted$ = new Subject<string>();
   private readonly mocksLoaded$ = new Subject<HttpMockEntity[]>();
   private readonly error$ = new Subject<string>();
+  private readonly validationMessage$ = new Subject<any>();
   private readonly stateChanged$ = new BehaviorSubject<IHttpMockManagerPresenterState>(this.getInitialState());
 
   // === Estado interno con signals ===
@@ -88,6 +89,7 @@ export class HttpMockManagerPresenter implements OnDestroy {
     onMockDeleted: this.mockDeleted$.asObservable(),
     onMocksLoaded: this.mocksLoaded$.asObservable(),
     onError: this.error$.asObservable(),
+    onValidationMessage: this.validationMessage$.asObservable(),
     onStateChanged: this.stateChanged$.asObservable()
   };
 
@@ -244,15 +246,22 @@ export class HttpMockManagerPresenter implements OnDestroy {
         // Actualizar el mock existente con el nuevo body
         await this.httpMockService.updateMock(mockId, { responseBody: mockBody.responseBody });
         
-        // Actualizar el estado local
+        // Actualizar el estado local y obtener el mock actualizado
+        let updatedMock: HttpMockEntity | undefined;
         this._currentMocks.update(mocks => 
           mocks.map(mock => {
             if (mock.id === mockId) {
               mock.responseBody = mockBody.responseBody;
+              updatedMock = mock;
             }
             return mock;
           })
         );
+
+        // Emitir evento de mock creado/actualizado para notificar al componente
+        if (updatedMock) {
+          this.mockCreated$.next(updatedMock);
+        }
 
         this.setLastOperation('Mock body saved successfully');
       } else {
@@ -897,8 +906,15 @@ export class HttpMockManagerPresenter implements OnDestroy {
     }
   }
 
-  private setLastOperation(operation: string | null): void {
+  private setLastOperation(operation: string): void {
     this._lastOperation.set(operation);
+  }
+
+  /**
+   * Emite un mensaje de validación
+   */
+  public emitValidationMessage(type: 'success' | 'error' | 'warning' | 'info', text: string, durationMs?: number): void {
+    this.validationMessage$.next({ type, text, durationMs });
   }
 
   private getInitialState(): IHttpMockManagerPresenterState {
@@ -944,6 +960,24 @@ export class HttpMockManagerPresenter implements OnDestroy {
   }
 
   /**
+   * Busca un mock por su nombre
+   */
+  async findMockByName(name: string): Promise<HttpMockEntity | null> {
+    try {
+      this.setLoading(true);
+      // Obtener todos los mocks y buscar por nombre
+      const allMocks = await this.httpMockRepository.findAll();
+      const found = allMocks.find(mock => mock.name === name);
+      return found || null;
+    } catch (error) {
+      console.error('Error finding mock by name:', error);
+      return null;
+    } finally {
+      this.setLoading(false);
+    }
+  }
+
+  /**
    * Actualiza un mock existente con un nuevo schema
    */
   async handleUpdateMockSchema(mockId: string, mockSchema: MockSchema): Promise<HttpMockEntity | null> {
@@ -968,6 +1002,9 @@ export class HttpMockManagerPresenter implements OnDestroy {
         this._currentMocks.update(mocks => 
           mocks.map(mock => mock.id === mockId ? updatedMock : mock)
         );
+        
+        // Emitir evento de mock creado/actualizado para notificar al componente
+        this.mockCreated$.next(updatedMock);
         
         await this.refreshStatistics();
         this.setLastOperation(`Mock "${mockSchema.nameMock}" updated successfully`);

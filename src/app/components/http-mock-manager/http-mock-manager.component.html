@@ -454,7 +454,7 @@
           <!-- Save actions for Mock Config -->
           <div class="form-actions">
             <button class="btn btn-success" (click)="saveContext()"
-              [disabled]="!nameMock.trim() || !url.trim() || isLoading()">
+              [disabled]="!isFormValid() || isLoading()">
               {{ isLoading() ? '⏳ Guardando...' : '💾 Guardar Configuración' }}
             </button>
           </div>
@@ -623,7 +623,7 @@
           <!-- Save actions for Headers -->
           <div class="form-actions">
             <button class="btn btn-success" (click)="saveContext()"
-              [disabled]="!nameMock.trim() || !url.trim() || isLoading()">
+              [disabled]="!isFormValid() || isLoading()">
               {{ isLoading() ? '⏳ Guardando...' : '💾 Guardar Cabecera' }}
             </button>
           </div>
@@ -694,7 +694,7 @@
           <!-- Save actions for Body -->
           <div class="form-actions">
             <button class="btn btn-success" (click)="saveContext()"
-              [disabled]="!nameMock.trim() || !url.trim() || isLoading()">
+              [disabled]="!isFormValid() || isLoading()">
               {{ isLoading() ? '⏳ Guardando...' : '💾 Guardar Cuerpo' }}
             </button>
           </div>
