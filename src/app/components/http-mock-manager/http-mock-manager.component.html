@@ -18,8 +18,9 @@
   <!-- Mensaje de validación global - Visible en cualquier flujo -->
   <div class="global-validation-message" *ngIf="jsonValidationMessage()" 
        [class.success-message]="jsonValidationMessage()?.type === 'success'"
-       [class.error-message]="jsonValidationMessage()?.type === 'error'">
-    {{ jsonValidationMessage()?.text }}
+       [class.error-message]="jsonValidationMessage()?.type === 'error'"
+       [class.info-message]="jsonValidationMessage()?.type === 'info'">
+    {{ jsonValidationMessage()?.text}}
   </div>
 
   <!-- Contenido principal -->
@@ -394,70 +395,92 @@
 
         <!-- Sub-tab 1: Mock Config -->
         <div class="sub-tab-content" *ngIf="activeSubTab() === 1">
-          <div class="section-header section-header-flex">
-            <div class="header-content">
-              <h4>📝 Configuración de HTTP Mock</h4>
-              <p>Define las propiedades básicas de tu HTTP mock</p>
-            </div>
-            <button class="btn btn-primary btn-new-record" (click)="createNewRecord()" type="button" title="Crear nuevo registro">
-              ➕
-            </button>
-          </div>
-
-          <div class="form-group">
-            <label for="nameMock">Nombre del Mock:</label>
-            <input id="nameMock" type="text" [(ngModel)]="nameMock" placeholder="Ingrese un nombre descriptivo para el mock..."
-              class="form-input">
-            <small class="field-help">Un nombre descriptivo para identificar este mock</small>
-          </div>
-
-          <div class="form-group">
-            <label for="serviceCodeMock">Código de Servicio:</label>
-            <input id="serviceCodeMock" type="text" [(ngModel)]="serviceCode" placeholder="Ingrese el identificador del servicio..."
-              class="form-input">
-            <small class="field-help">Agrupa mocks relacionados bajo el mismo identificador de servicio</small>
-          </div>
-
-          <div class="form-group">
-            <label for="url">URL de Solicitud:</label>
-            <input id="url" type="text" [(ngModel)]="url" placeholder="Ingrese la URL a simular..." class="form-input">
-            <small class="field-help">La ruta URL completa que será interceptada</small>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group flex-1">
-              <label for="httpMethod">Método HTTP:</label>
-              <select id="httpMethod" [(ngModel)]="httpMethod" class="form-select">
-                <option *ngFor="let method of httpMethods" [value]="method">
-                  {{ method }}
-                </option>
-              </select>
+          <form [formGroup]="mockForm" (ngSubmit)="saveContext()">
+            <div class="section-header section-header-flex">
+              <div class="header-content">
+                <h4>📝 Configuración de HTTP Mock</h4>
+                <p>Define las propiedades básicas de tu HTTP mock</p>
+              </div>
+              <button class="btn btn-primary btn-new-record" (click)="createNewRecord()" type="button" title="Crear nuevo registro">
+                ➕
+              </button>
             </div>
 
-            <div class="form-group flex-1">
-              <label for="httpCode">Código de Respuesta:</label>
-              <select id="httpCode" [(ngModel)]="httpCodeResponseValue" class="form-select">
-                <option *ngFor="let code of httpCodeResponse" [value]="code">
-                  {{ code }}
-                </option>
-              </select>
+            <div class="form-group">
+              <label for="nameMock">Nombre del Mock:</label>
+              <input id="nameMock" type="text" formControlName="nameMock" placeholder="Ingrese un nombre descriptivo para el mock..."
+                class="form-input"
+                [class.input-error]="mockForm.get('nameMock')?.invalid && (mockForm.get('nameMock')?.dirty || mockForm.get('nameMock')?.touched)">
+              <small class="field-help" *ngIf="!(mockForm.get('nameMock')?.invalid && (mockForm.get('nameMock')?.dirty || mockForm.get('nameMock')?.touched))">Un nombre descriptivo para identificar este mock</small>
+              <small class="field-help error-message" *ngIf="mockForm.get('nameMock')?.invalid && (mockForm.get('nameMock')?.dirty || mockForm.get('nameMock')?.touched)">
+                <span *ngIf="mockForm.get('nameMock')?.errors?.['required']">El nombre es obligatorio.</span>
+                <span *ngIf="mockForm.get('nameMock')?.errors?.['maxlength']">Máximo 100 caracteres.</span>
+              </small>
             </div>
-          </div>
 
-          <div class="form-group">
-            <label for="delay">Retraso de Respuesta (ms):</label>
-            <input id="delay" type="number" [value]="delayMs" (input)="onInputNumber($event, 'delayMs')" min="0"
-              class="form-input">
-            <small class="field-help">Simula la latencia de la red (0 = respuesta instantánea)</small>
-          </div>
+            <div class="form-group">
+              <label for="serviceCodeMock">Código de Servicio:</label>
+              <input id="serviceCodeMock" type="text" formControlName="serviceCode" placeholder="Ingrese el identificador del servicio..."
+                class="form-input"
+                [class.input-error]="mockForm.get('serviceCode')?.invalid && (mockForm.get('serviceCode')?.dirty || mockForm.get('serviceCode')?.touched)">
+              <small class="field-help" *ngIf="!(mockForm.get('serviceCode')?.invalid && (mockForm.get('serviceCode')?.dirty || mockForm.get('serviceCode')?.touched))">Agrupa mocks relacionados bajo el mismo identificador de servicio</small>
+              <small class="field-help error-message" *ngIf="mockForm.get('serviceCode')?.invalid && (mockForm.get('serviceCode')?.dirty || mockForm.get('serviceCode')?.touched)">
+                <span *ngIf="mockForm.get('serviceCode')?.errors?.['required']">El código de servicio es obligatorio.</span>
+                <span *ngIf="mockForm.get('serviceCode')?.errors?.['maxlength']">Máximo 100 caracteres.</span>
+              </small>
+            </div>
 
-          <!-- Save actions for Mock Config -->
-          <div class="form-actions">
-            <button class="btn btn-success" (click)="saveContext()"
-              [disabled]="!isFormValid() || isLoading()">
-              {{ isLoading() ? '⏳ Guardando...' : '💾 Guardar Configuración' }}
-            </button>
-          </div>
+            <div class="form-group">
+              <label for="url">URL de Solicitud:</label>
+              <input id="url" type="text" formControlName="url" placeholder="Ingrese la URL a simular..." class="form-input"
+                [class.input-error]="mockForm.get('url')?.invalid && (mockForm.get('url')?.dirty || mockForm.get('url')?.touched)">
+              <small class="field-help" *ngIf="!(mockForm.get('url')?.invalid && (mockForm.get('url')?.dirty || mockForm.get('url')?.touched))">La ruta URL completa que será interceptada</small>
+              <small class="field-help error-message" *ngIf="mockForm.get('url')?.invalid && (mockForm.get('url')?.dirty || mockForm.get('url')?.touched)">
+                <span *ngIf="mockForm.get('url')?.errors?.['required']">La URL es obligatoria.</span>
+                <span *ngIf="mockForm.get('url')?.errors?.['maxlength']">Máximo 300 caracteres.</span>
+              </small>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label for="httpMethod">Método HTTP:</label>
+                <select id="httpMethod" formControlName="httpMethod" class="form-select">
+                  <option *ngFor="let method of httpMethods" [value]="method">
+                    {{ method }}
+                  </option>
+                </select>
+              </div>
+
+              <div class="form-group flex-1">
+                <label for="httpCode">Código de Respuesta:</label>
+                <select id="httpCode" formControlName="httpCodeResponseValue" class="form-select">
+                  <option *ngFor="let code of httpCodeResponse" [value]="code">
+                    {{ code }}
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="delay">Retraso de Respuesta (ms):</label>
+              <input id="delay" type="number" formControlName="delayMs" min="0"
+                class="form-input"
+                [class.input-error]="mockForm.get('delayMs')?.invalid && (mockForm.get('delayMs')?.dirty || mockForm.get('delayMs')?.touched)">
+              <small class="field-help" *ngIf="!(mockForm.get('delayMs')?.invalid && (mockForm.get('delayMs')?.dirty || mockForm.get('delayMs')?.touched))">Simula la latencia de la red (0 = respuesta instantánea)</small>
+              <small class="field-help error-message" *ngIf="mockForm.get('delayMs')?.invalid && (mockForm.get('delayMs')?.dirty || mockForm.get('delayMs')?.touched)">
+                <span *ngIf="mockForm.get('delayMs')?.errors?.['required']">El retraso es obligatorio.</span>
+                <span *ngIf="mockForm.get('delayMs')?.errors?.['min']">No puede ser negativo.</span>
+              </small>
+            </div>
+
+            <!-- Save actions for Mock Config -->
+            <div class="form-actions">
+              <button class="btn btn-success" type="submit"
+                [disabled]="!mockForm.valid || isLoading()">
+                {{ isLoading() ? '⏳ Guardando...' : '💾 Guardar Configuración' }}
+              </button>
+            </div>
+          </form>
         </div>
 
         <!-- Sub-tab 2: Headers -->
@@ -469,21 +492,21 @@
 
           <!-- Add New Header -->
           <div class="header-form">
-            <div class="form-header">
-              <h5>{{ editingHeaderKey() ? '✏️ Editar Cabecera' : '➕ Agregar Cabecera' }}</h5>
+              <div class="form-header">
+                <h5>{{ editingHeaderKey() ? '✏️ Editar Cabecera' : '➕ Agregar Cabecera' }}</h5>
               <button *ngIf="editingHeaderKey()" class="btn btn-secondary btn-small" (click)="cancelEditHeader()">
-                Cancelar
-              </button>
-            </div>
-            <div class="form-row">
+                  Cancelar
+                </button>
+              </div>
+              <div class="form-row">
               <input type="text" [(ngModel)]="newHeaderKey" placeholder="Nombre de cabecera (ej. Content-Type)..."
-                class="form-input flex-1" (keydown.enter)="addHeader()">
+                  class="form-input flex-1" (keydown.enter)="addHeader()">
               <input type="text" [(ngModel)]="newHeaderValue" placeholder="Valor de cabecera..." class="form-input flex-1"
-                (keydown.enter)="addHeader()">
+                  (keydown.enter)="addHeader()">
               <button class="btn btn-primary" (click)="addHeader()" [disabled]="!newHeaderKey().trim()">
-                <span class="icon-white">{{ editingHeaderKey() ? '✓' : '＋' }}</span>
-              </button>
-            </div>
+                  <span class="icon-white">{{ editingHeaderKey() ? '✓' : '＋' }}</span>
+                </button>
+              </div>
           </div>
 
           <!-- Current Headers -->
@@ -623,7 +646,7 @@
           <!-- Save actions for Headers -->
           <div class="form-actions">
             <button class="btn btn-success" (click)="saveContext()"
-              [disabled]="!isFormValid() || isLoading()">
+              [disabled]="isLoading()">
               {{ isLoading() ? '⏳ Guardando...' : '💾 Guardar Cabecera' }}
             </button>
           </div>
@@ -636,7 +659,7 @@
             <p>Defina los datos de respuesta JSON que se devolverán</p>
           </div>
 
-          <div class="json-editor-group">
+          <form class="json-editor-group" [formGroup]="bodyForm">
             <!-- Enhanced JSON Editor Header -->
             <div class="textarea-controls">
               <div class="editor-label">
@@ -655,9 +678,9 @@
             
             <!-- Professional JSON Editor Container -->
             <div class="json-editor-container">
-              <textarea id="responseBody" 
-                        [(ngModel)]="responseBody"
-                        placeholder='{"message": "Success", "data": [], "status": "ok"}' 
+              <textarea id="responseBody"
+                        formControlName="responseBody"
+                        placeholder='{"message": "Success", "data": [], "status": "ok"}'
                         rows="15"
                         class="form-textarea"
                         [class.json-error]="jsonValidationMessage()?.type === 'error'"
@@ -684,17 +707,21 @@
                 </div>
               </div>
               <div class="status-right">
-                <span class="char-count">{{ responseBody.length || 0 }} caracteres</span>
+                <span class="char-count">{{ bodyForm.get('responseBody')?.value?.length || 0 }} caracteres</span>
               </div>
             </div>
             
-            <small class="field-help">Ingrese un JSON válido que se devolverá como respuesta simulada</small>
-          </div>
+            <small class="field-help" *ngIf="!(bodyForm.get('responseBody')?.invalid && (bodyForm.get('responseBody')?.dirty || bodyForm.get('responseBody')?.touched))">Ingrese un JSON válido que se devolverá como respuesta simulada</small>
+            <small class="field-help error-message" *ngIf="bodyForm.get('responseBody')?.invalid && (bodyForm.get('responseBody')?.dirty || bodyForm.get('responseBody')?.touched)">
+              <span *ngIf="bodyForm.get('responseBody')?.errors?.['required']">El cuerpo de respuesta es obligatorio.</span>
+              <span *ngIf="bodyForm.get('responseBody')?.errors?.['minlength']">Debe tener al menos 2 caracteres.</span>
+            </small>
+          </form>
 
           <!-- Save actions for Body -->
           <div class="form-actions">
             <button class="btn btn-success" (click)="saveContext()"
-              [disabled]="!isFormValid() || isLoading()">
+              [disabled]="!bodyForm.valid || isLoading()">
               {{ isLoading() ? '⏳ Guardando...' : '💾 Guardar Cuerpo' }}
             </button>
           </div>

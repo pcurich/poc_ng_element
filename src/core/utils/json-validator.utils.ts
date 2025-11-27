@@ -6,7 +6,7 @@
  * para mocks, configuraciones de base de datos, etc.
  */
 
-import { DatabaseConfig, DatabaseIndex } from '../../app/components/interfaces';
+import { DatabaseConfig } from '../../app/components/interfaces';
 
 /**
  * Tipo de archivo de exportación soportado

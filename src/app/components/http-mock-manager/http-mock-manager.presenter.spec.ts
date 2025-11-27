@@ -150,8 +150,8 @@ describe('HttpMockManagerPresenter', () => {
       spyOn<any>(presenter, 'checkDatabaseExists').and.returnValue(Promise.reject(new Error('Init failed')));
       try {
         await presenter.initialize();
-      } catch (e) {}
-      expect(presenter.error()).toBeTruthy();
+      } catch (e) { }
+      expect(presenter.error()).toContain('Init failed');
     });
 
     it('#Should-set-loading-to-false-after-initialization-completes', async () => {
@@ -199,7 +199,7 @@ describe('HttpMockManagerPresenter', () => {
     });
 
     it('#Should-set-lastOperation-after-context-change', async () => {
-      const contextOption = { value: 'mock', id: 1, useMock: true } as ContextOption  ;
+      const contextOption = { value: 'mock', id: 1, useMock: true } as ContextOption;
       await presenter.handleContextTypeChange(contextOption);
       expect(presenter.lastOperation()).toBe('Context changed successfully');
     });
@@ -208,7 +208,7 @@ describe('HttpMockManagerPresenter', () => {
       spyOn(window.localStorage, 'setItem').and.throwError('Storage error');
       const contextOption = { value: 'mock', id: 1, useMock: true } as ContextOption;
       await presenter.handleContextTypeChange(contextOption);
-      expect(presenter.error()).toBeTruthy();
+      expect(presenter.error()).toContain('Storage error');
     });
   });
 
@@ -289,6 +289,7 @@ describe('HttpMockManagerPresenter', () => {
       mockHttpMockService.createMock.and.returnValue(Promise.reject(new Error('Create failed')));
       const result = await presenter.handleSaveMockSchema(mockSchema as MockSchema);
       expect(result).toBeNull();
+      expect(presenter.error()).toContain('Create failed');
     });
 
     it('#Should-set-error-when-create-mock-fails', async () => {
@@ -303,7 +304,7 @@ describe('HttpMockManagerPresenter', () => {
       };
       mockHttpMockService.createMock.and.returnValue(Promise.reject(new Error('Create failed')));
       await presenter.handleSaveMockSchema(mockSchema as MockSchema);
-      expect(presenter.error()).toBeTruthy();
+      expect(presenter.error()).toContain('Create failed');
     });
   });
 
@@ -419,15 +420,6 @@ describe('HttpMockManagerPresenter', () => {
       mockHttpMockService.updateMock.and.returnValue(Promise.resolve(null));
       await presenter.handleSaveMockBody({ responseBody: '{"updated":true}' }, '1');
       expect(presenter.currentMocks()[0].responseBody).toBe('{"updated":true}');
-    });
-
-    it('#Should-use-latest-mock-when-no-mockId-provided', async () => {
-      const mock1 = { id: '1', name: 'Test1', serviceCode: 'TEST', url: '/test1', method: 'GET', httpCodeResponseValue: 200, delayMs: 0, headers: {}, responseBody: '{}' } as HttpMockEntity;
-      const mock2 = { id: '2', name: 'Test2', serviceCode: 'TEST', url: '/test2', method: 'GET', httpCodeResponseValue: 200, delayMs: 0, headers: {}, responseBody: '{}' } as HttpMockEntity;
-      (presenter as any)._currentMocks.set([mock1, mock2]);
-      mockHttpMockService.updateMock.and.returnValue(Promise.resolve(null));
-      await presenter.handleSaveMockBody({ responseBody: '{"new":true}' });
-      expect(mockHttpMockService.updateMock).toHaveBeenCalledWith('2', jasmine.any(Object));
     });
 
     it('#Should-throw-error-when-no-mock-available', async () => {
@@ -1159,4 +1151,495 @@ describe('HttpMockManagerPresenter', () => {
       expect(presenter.error()).toBeTruthy();
     });
   });
+
+  describe('checkDatabaseExists', () => {
+    let defaultConfig: any;
+    let mockDbContext: any;
+
+    beforeEach(() => {
+      defaultConfig = { name: 'TestDB', version: 1, objectStoreName: 'mocks', keyPath: 'id', indexes: [] };
+      spyOn(ORMFactory, 'getDefaultHttpMocksConfig').and.returnValue(defaultConfig);
+    });
+
+    it('should return exists: false, isInitialized: false if DB does not exist', async () => {
+      // Arrange
+      spyOn<any>(presenter, 'isDatabasePresent').and.returnValue(Promise.resolve(false));
+
+      // Act
+      const result = await presenter.checkDatabaseExists();
+
+      // Assert
+      expect(result).toEqual({ exists: false, isInitialized: false });
+    });
+
+    it('should return exists: true, isInitialized: true if DB exists and initializes', async () => {
+      // Arrange
+      spyOn<any>(presenter, 'isDatabasePresent').and.returnValue(Promise.resolve(true));
+      mockDbContext = {
+        open: jasmine.createSpy('open').and.returnValue(Promise.resolve()),
+        close: jasmine.createSpy('close').and.returnValue(Promise.resolve())
+      };
+      spyOn(ORMFactory, 'createDbContext').and.returnValue(mockDbContext);
+
+      // Act
+      const result = await presenter.checkDatabaseExists();
+
+      // Assert
+      expect(result).toEqual({ exists: true, isInitialized: true, config: defaultConfig });
+    });
+
+    it('should return exists: true, isInitialized: false and error if DB exists but fails to initialize', async () => {
+      // Arrange
+      spyOn<any>(presenter, 'isDatabasePresent').and.returnValue(Promise.resolve(true));
+      mockDbContext = {
+        open: jasmine.createSpy('open').and.returnValue(Promise.reject('open error')),
+        close: jasmine.createSpy('close').and.returnValue(Promise.resolve())
+      };
+      spyOn(ORMFactory, 'createDbContext').and.returnValue(mockDbContext);
+
+      // Act
+      const result = await presenter.checkDatabaseExists();
+
+      // Assert
+      expect(result.exists).toBe(true);
+      // Only one expect per it: check isInitialized is false
+      // (error property is checked in next it)
+      expect(result.isInitialized).toBe(false);
+    });
+
+    it('should return error property if DB exists but fails to initialize', async () => {
+      // Arrange
+      spyOn<any>(presenter, 'isDatabasePresent').and.returnValue(Promise.resolve(true));
+      mockDbContext = {
+        open: jasmine.createSpy('open').and.returnValue(Promise.reject('open error')),
+        close: jasmine.createSpy('close').and.returnValue(Promise.resolve())
+      };
+      spyOn(ORMFactory, 'createDbContext').and.returnValue(mockDbContext);
+
+      // Act
+      const result = await presenter.checkDatabaseExists();
+
+      // Assert
+      expect(result.error).toContain('Database exists but failed to initialize');
+    });
+
+    it('should return exists: false, isInitialized: false and error if general error occurs', async () => {
+      // Arrange
+      spyOn<any>(presenter, 'isDatabasePresent').and.throwError('unexpected');
+
+      // Act
+      const result = await presenter.checkDatabaseExists();
+
+      // Assert
+      expect(result.exists).toBe(false);
+    });
+
+    it('should return error property if general error occurs', async () => {
+      // Arrange
+      spyOn<any>(presenter, 'isDatabasePresent').and.throwError('unexpected');
+
+      // Act
+      const result = await presenter.checkDatabaseExists();
+
+      // Assert
+      expect(result.error).toContain('Error checking database');
+    });
+  });
+
+  describe('isDatabasePresent', () => {
+    const dbName = 'TestDB';
+    beforeEach(() => {
+      presenter = TestBed.inject(HttpMockManagerPresenter);
+    });
+
+    it('should return false if window.indexedDB is not available', async () => {
+      const spy = spyOnProperty(window, 'indexedDB', 'get').and.returnValue(undefined as unknown as IDBFactory);
+      const result = await presenter.isDatabasePresent(dbName);
+      expect(result).toBe(false);
+      spy.and.callThrough();
+    });
+
+    it('should return false if indexedDB.databases returns empty array', async () => {
+      (window as any).indexedDB.databases = jasmine.createSpy().and.returnValue(Promise.resolve([]));
+      const result = await presenter.isDatabasePresent(dbName);
+      expect(result).toBe(false);
+    });
+
+    it('should return false if targetDb is not found', async () => {
+      (window as any).indexedDB.databases = jasmine.createSpy().and.returnValue(Promise.resolve([{ name: 'OtherDB', version: 1 }]));
+      const result = await presenter.isDatabasePresent(dbName);
+      expect(result).toBe(false);
+    });
+
+    it('should return false if openRequest.onerror is called (databases API)', async () => {
+      (window as any).indexedDB.databases = jasmine.createSpy().and.returnValue(Promise.resolve([{ name: dbName, version: 1 }]));
+      spyOn(window.indexedDB, 'open').and.callFake(() => {
+        const req = {
+          addEventListener: () => { },
+          removeEventListener: () => { },
+          dispatchEvent: () => false,
+          onblocked: null,
+          onerror: null,
+          onsuccess: null,
+          onupgradeneeded: null,
+          readyState: 'done',
+          result: undefined,
+          error: null,
+          source: undefined,
+          transaction: null
+        } as unknown as IDBOpenDBRequest;
+        setTimeout(() => { if (typeof req.onerror === 'function') req.onerror(new Event('error')); }, 0);
+        Object.defineProperty(req, 'onerror', {
+          set(fn) { setTimeout(fn, 0); }
+        });
+        return req as IDBOpenDBRequest;
+      });
+      const result = await presenter.isDatabasePresent(dbName);
+      expect(result).toBe(false);
+    });
+
+    it('should return true if db has object stores (databases API)', async () => {
+      (window as any).indexedDB.databases = jasmine.createSpy().and.returnValue(Promise.resolve([{ name: dbName, version: 1 }]));
+      spyOn(window.indexedDB, 'open').and.callFake(() => {
+        let onsuccess: ((ev: any) => void) | undefined;
+        const req = {
+          addEventListener: () => { },
+          removeEventListener: () => { },
+          dispatchEvent: () => false,
+          onblocked: null,
+          onerror: null,
+          onsuccess: null,
+          onupgradeneeded: null,
+          readyState: 'done',
+          result: undefined,
+          error: null,
+          source: undefined,
+          transaction: null
+        } as unknown as IDBOpenDBRequest;
+        const fakeDb = { objectStoreNames: { length: 1 }, close: () => { } };
+        setTimeout(() => { if (typeof onsuccess === 'function') onsuccess({ target: { result: fakeDb } }); }, 0);
+        Object.defineProperty(req, 'onsuccess', {
+          set(fn) { onsuccess = fn; }
+        });
+        return req as IDBOpenDBRequest;
+      });
+      const result = await presenter.isDatabasePresent(dbName);
+      expect(result).toBe(true);
+    });
+
+    it('should return false if db has no object stores (databases API)', async () => {
+      (window as any).indexedDB.databases = jasmine.createSpy().and.returnValue(Promise.resolve([{ name: dbName, version: 1 }]));
+      spyOn(window.indexedDB, 'open').and.callFake(() => {
+        let onsuccess: ((ev: any) => void) | undefined;
+        const req = {
+          addEventListener: () => { },
+          removeEventListener: () => { },
+          dispatchEvent: () => false,
+          onblocked: null,
+          onerror: null,
+          onsuccess: null,
+          onupgradeneeded: null,
+          readyState: 'done',
+          result: undefined,
+          error: null,
+          source: undefined,
+          transaction: null
+        } as unknown as IDBOpenDBRequest;
+        const fakeDb = { objectStoreNames: { length: 0 }, close: () => { } };
+        setTimeout(() => { if (typeof onsuccess === 'function') onsuccess({ target: { result: fakeDb } }); }, 0);
+        Object.defineProperty(req, 'onsuccess', {
+          set(fn) { onsuccess = fn; }
+        });
+        return req as IDBOpenDBRequest;
+      });
+      const result = await presenter.isDatabasePresent(dbName);
+      expect(result).toBe(false);
+    });
+
+    it('should return false if openRequest.onupgradeneeded is called (databases API)', async () => {
+      Object.defineProperty(window.indexedDB, 'databases', {
+        value: jasmine.createSpy().and.returnValue(Promise.resolve([{ name: dbName, version: 1 }])),
+        writable: true,
+        configurable: true
+      });
+      spyOn(window.indexedDB, 'open').and.callFake(() => {
+        let onupgradeneeded: (() => void) | undefined;
+        const req = {
+          addEventListener: () => { },
+          removeEventListener: () => { },
+          dispatchEvent: () => false,
+          onblocked: null,
+          onerror: null,
+          onsuccess: null,
+          onupgradeneeded: null,
+          readyState: 'done',
+          result: {
+            name: dbName,
+            version: 1,
+            objectStoreNames: { length: 0, contains: () => false, item: () => null },
+            close: () => { },
+            onabort: null,
+            onclose: null,
+            onerror: null,
+            onversionchange: null,
+            createObjectStore: () => { throw new Error('not implemented'); },
+            deleteObjectStore: () => { throw new Error('not implemented'); },
+            transaction: () => { throw new Error('not implemented'); },
+            addEventListener: () => { },
+            removeEventListener: () => { },
+            dispatchEvent: () => false
+          } as unknown as IDBDatabase,
+          error: null,
+          source: undefined,
+          transaction: null
+        } as unknown as IDBOpenDBRequest;
+        setTimeout(() => { if (typeof onupgradeneeded === 'function') onupgradeneeded(); }, 0);
+        Object.defineProperty(req, 'onupgradeneeded', {
+          set(fn) { onupgradeneeded = fn; }
+        });
+        return req as IDBOpenDBRequest;
+      });
+      const result = await presenter.isDatabasePresent(dbName);
+      expect(result).toBe(false);
+    });
+
+    it('should return true if db has object stores (fallback)', async () => {
+      Object.defineProperty(window.indexedDB, 'databases', {
+        value: undefined,
+        configurable: true
+      });
+      spyOn(window.indexedDB, 'open').and.callFake(() => {
+        let onsuccess: ((ev: any) => void) | undefined;
+        const fakeDb = {
+          objectStoreNames: ['store1'],
+          close: () => { }
+        };
+        const req = {
+          onsuccess: null,
+          onerror: null,
+          onupgradeneeded: null,
+          readyState: 'done',
+          result: fakeDb,
+          error: null,
+          source: undefined,
+          transaction: null,
+          addEventListener: () => { },
+          removeEventListener: () => { },
+          dispatchEvent: () => false,
+          onblocked: null
+        } as unknown as IDBOpenDBRequest;
+        setTimeout(() => {
+          if (req.onsuccess) req.onsuccess({ target: req } as any);
+        }, 0);
+        return req as IDBOpenDBRequest;
+      });
+      const result = await presenter.isDatabasePresent(dbName);
+      expect(result).toBe(true);
+    });
+
+    it('should return false if db has no object stores (fallback)', async () => {
+      delete (window as any).indexedDB.databases;
+      spyOn(window.indexedDB, 'open').and.callFake(() => {
+        let onsuccess: ((ev: any) => void) | undefined;
+        const req = {
+          addEventListener: () => { },
+          removeEventListener: () => { },
+          dispatchEvent: () => false,
+          onblocked: null,
+          onerror: null,
+          onsuccess: null,
+          onupgradeneeded: null,
+          readyState: 'done',
+          result: undefined,
+          error: null,
+          source: undefined,
+          transaction: null
+        } as unknown as IDBOpenDBRequest;
+        // Usar un array real vacío, sin métodos extra
+        const fakeDb = {
+          objectStoreNames: [],
+          close: () => { }
+        };
+        setTimeout(() => {
+          if (typeof onsuccess === 'function') onsuccess({ target: { result: fakeDb } });
+        }, 0);
+        Object.defineProperty(req, 'onsuccess', {
+          set(fn) { onsuccess = fn; }
+        });
+        return req as IDBOpenDBRequest;
+      });
+      const result = await presenter.isDatabasePresent(dbName);
+      expect(result).toBe(false);
+    });
+
+    it('should return false if openRequest.onerror is called (fallback)', async () => {
+      delete (window as any).indexedDB.databases;
+      spyOn(window.indexedDB, 'open').and.callFake(() => {
+        const req = {
+          addEventListener: () => { },
+          removeEventListener: () => { },
+          dispatchEvent: () => false,
+          onblocked: null,
+          onerror: null,
+          onsuccess: null,
+          onupgradeneeded: null,
+          readyState: 'done',
+          result: undefined,
+          error: null,
+          source: undefined,
+          transaction: null
+        } as unknown as IDBOpenDBRequest;
+        setTimeout(() => { if (typeof req.onerror === 'function') req.onerror(new Event('error')); }, 0);
+        Object.defineProperty(req, 'onerror', {
+          set(fn) { setTimeout(fn, 0); }
+        });
+        return req as IDBOpenDBRequest;
+      });
+      const result = await presenter.isDatabasePresent(dbName);
+      expect(result).toBe(false);
+    });
+
+    it('should return false if openRequest.onupgradeneeded is called (fallback)', async () => {
+      delete (window as any).indexedDB.databases;
+      spyOn(window.indexedDB, 'open').and.callFake(() => {
+        let onupgradeneeded: (() => void) | undefined;
+        const req = {
+          addEventListener: () => { },
+          removeEventListener: () => { },
+          dispatchEvent: () => false,
+          onblocked: null,
+          onerror: null,
+          onsuccess: null,
+          onupgradeneeded: null,
+          readyState: 'done',
+          result: undefined,
+          error: null,
+          source: undefined,
+          transaction: null
+        } as unknown as IDBOpenDBRequest;
+        setTimeout(() => { if (typeof onupgradeneeded === 'function') onupgradeneeded(); }, 0);
+        Object.defineProperty(req, 'onupgradeneeded', {
+          set(fn) { onupgradeneeded = fn; }
+        });
+        return req as IDBOpenDBRequest;
+      });
+      const result = await presenter.isDatabasePresent(dbName);
+      expect(result).toBe(false);
+    });
+
+    it('should return false if an exception is thrown', async () => {
+      spyOnProperty(window, 'indexedDB', 'get').and.throwError('fail');
+      const result = await presenter.isDatabasePresent(dbName);
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('emitValidationMessage', () => {
+    it('should emit success message with text', async () => {
+      const emittedValues: any[] = [];
+      presenter.events.onValidationMessage.subscribe(value => emittedValues.push(value));
+      presenter.emitValidationMessage('success', 'Test message');
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(emittedValues).toEqual([{ type: 'success', text: 'Test message', durationMs: undefined }]);
+    });
+
+    it('should emit error message with text', async () => {
+      const emittedValues: any[] = [];
+      presenter.events.onValidationMessage.subscribe(value => emittedValues.push(value));
+      presenter.emitValidationMessage('error', 'Error message');
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(emittedValues).toEqual([{ type: 'error', text: 'Error message', durationMs: undefined }]);
+    });
+
+    it('should emit warning message with text', async () => {
+      const emittedValues: any[] = [];
+      presenter.events.onValidationMessage.subscribe(value => emittedValues.push(value));
+      presenter.emitValidationMessage('warning', 'Warning message');
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(emittedValues).toEqual([{ type: 'warning', text: 'Warning message', durationMs: undefined }]);
+    });
+
+    it('should emit info message with text', async () => {
+      const emittedValues: any[] = [];
+      presenter.events.onValidationMessage.subscribe(value => emittedValues.push(value));
+      presenter.emitValidationMessage('info', 'Info message');
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(emittedValues).toEqual([{ type: 'info', text: 'Info message', durationMs: undefined }]);
+    });
+
+    it('should emit message with durationMs', async () => {
+      const emittedValues: any[] = [];
+      presenter.events.onValidationMessage.subscribe(value => emittedValues.push(value));
+      presenter.emitValidationMessage('success', 'Test message', 5000);
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(emittedValues).toEqual([{ type: 'success', text: 'Test message', durationMs: 5000 }]);
+    });
+  });
+
+  describe('initializeServices', () => {
+    let mockDbContext: jasmine.SpyObj<any>;
+    let mockRepository: jasmine.SpyObj<HttpMockRepository>;
+
+    beforeEach(() => {
+      mockDbContext = jasmine.createSpyObj('DbContext', ['open']);
+      mockRepository = jasmine.createSpyObj('HttpMockRepository', ['findByServiceCode', 'getAll', 'create', 'update', 'delete', 'findAll', 'getStatistics']);
+
+      (window as any).HttpMockService = HttpMockService;
+      spyOn(presenter as any, 'loadDefaultDatabaseConfig');
+      spyOn(presenter as any, 'refreshStatistics');
+      spyOn(presenter as any, 'setLastOperation');
+      spyOn(ORMFactory, 'getDefaultHttpMocksConfig').and.returnValue({ name: 'TestDB', version: 1, objectStores: [] });
+      spyOn(ORMFactory, 'createDbContext').and.returnValue(mockDbContext);
+      spyOn(ORMFactory, 'createHttpMockRepository').and.returnValue(mockRepository);
+      spyOn(presenter['_databaseStatus'], 'update');
+      spyOn(window as any, 'HttpMockService').and.callFake(() => mockHttpMockService);
+    });
+
+    it('should initialize services successfully', async () => {
+      mockDbContext.open.and.resolveTo();
+      await (presenter as any).initializeServices();
+      expect((presenter as any).loadDefaultDatabaseConfig).toHaveBeenCalled();
+    });
+
+    it('should create db context and open it', async () => {
+      mockDbContext.open.and.resolveTo();
+      await (presenter as any).initializeServices();
+      expect(ORMFactory.createDbContext).toHaveBeenCalled();
+    });
+
+    it('should create repository and service', async () => {
+      mockDbContext.open.and.resolveTo();
+      await (presenter as any).initializeServices();
+      expect(ORMFactory.createHttpMockRepository).toHaveBeenCalledWith(mockDbContext);
+    });
+
+    it('should update database status', async () => {
+      mockDbContext.open.and.resolveTo();
+      await (presenter as any).initializeServices();
+      expect(presenter['_databaseStatus'].update).toHaveBeenCalled();
+    });
+
+    it('should set last operation on success', async () => {
+      mockDbContext.open.and.resolveTo();
+      await (presenter as any).initializeServices();
+      expect((presenter as any).setLastOperation).toHaveBeenCalledWith('Services initialized successfully');
+    });
+
+    it('should throw error when loadDefaultDatabaseConfig fails', async () => {
+      (presenter as any).loadDefaultDatabaseConfig.and.throwError(new Error('Config error'));
+      await expectAsync((presenter as any).initializeServices()).toBeRejectedWith(new Error('Failed to initialize services: Error: Config error'));
+    });
+
+    it('should throw error when dbContext.open fails', async () => {
+      mockDbContext.open.and.rejectWith(new Error('DB open error'));
+      await expectAsync((presenter as any).initializeServices()).toBeRejectedWith(new Error('Failed to initialize services: Error: DB open error'));
+    });
+
+    it('should throw error when refreshStatistics fails', async () => {
+      mockDbContext.open.and.resolveTo();
+      (presenter as any).refreshStatistics.and.throwError(new Error('Stats error'));
+      await expectAsync((presenter as any).initializeServices()).toBeRejectedWith(new Error('Failed to initialize services: Error: Stats error'));
+    });
+  });
+
 });

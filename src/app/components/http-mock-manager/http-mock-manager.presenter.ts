@@ -236,12 +236,6 @@ export class HttpMockManagerPresenter implements OnDestroy {
       this.setLoading(true);
       this.setLastOperation('Saving mock body...');
 
-      // Si no se proporciona mockId, buscar el mock más reciente
-      if (!mockId && this._currentMocks().length > 0) {
-        const latestMock = this._currentMocks().slice(-1)[0];
-        mockId = latestMock.id;
-      }
-
       if (mockId) {
         // Actualizar el mock existente con el nuevo body
         await this.httpMockService.updateMock(mockId, { responseBody: mockBody.responseBody });
@@ -580,7 +574,7 @@ export class HttpMockManagerPresenter implements OnDestroy {
   /**
    * Verifica si la base de datos existe en IndexedDB
    */
-  private async checkDatabaseExists(): Promise<DatabaseStatus> {
+  async checkDatabaseExists(): Promise<DatabaseStatus> {
     try {
       const config = ORMFactory.getDefaultHttpMocksConfig();
       
@@ -625,7 +619,7 @@ export class HttpMockManagerPresenter implements OnDestroy {
    * Verifica si una base de datos existe en IndexedDB sin crearla
    * Utiliza la API databases() para consultar sin crear accidentalmente una DB vacía
    */
-  private async isDatabasePresent(dbName: string): Promise<boolean> {
+  async isDatabasePresent(dbName: string): Promise<boolean> {
     try {
       if (!window.indexedDB) {
         return false;
@@ -738,7 +732,7 @@ export class HttpMockManagerPresenter implements OnDestroy {
   /**
    * Inicializa los servicios una vez que la base de datos existe
    */
-  private async initializeServices(): Promise<void> {
+   async initializeServices(): Promise<void> {
     try {
       // Cargar configuración de la base de datos
       await this.loadDefaultDatabaseConfig();
@@ -953,24 +947,6 @@ export class HttpMockManagerPresenter implements OnDestroy {
       return mocks.length > 0 ? mocks[0] : null;
     } catch (error) {
       console.error('Error finding mock by service code:', error);
-      return null;
-    } finally {
-      this.setLoading(false);
-    }
-  }
-
-  /**
-   * Busca un mock por su nombre
-   */
-  async findMockByName(name: string): Promise<HttpMockEntity | null> {
-    try {
-      this.setLoading(true);
-      // Obtener todos los mocks y buscar por nombre
-      const allMocks = await this.httpMockRepository.findAll();
-      const found = allMocks.find(mock => mock.name === name);
-      return found || null;
-    } catch (error) {
-      console.error('Error finding mock by name:', error);
       return null;
     } finally {
       this.setLoading(false);

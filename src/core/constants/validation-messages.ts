@@ -5,7 +5,13 @@
  * para mantener consistencia y facilitar mantenimiento/internacionalización.
  */
 
-import { ValidationMessage } from '../../app/components/interfaces';
+export type ValidationMessageType = 'success' | 'error' | 'warning' | 'info';
+
+export interface ValidationMessage {
+  type: ValidationMessageType;
+  text: string;
+  durationMs?: number;
+}
 
 export const ValidationMessages = {
   // === Mensajes de Mocks ===
@@ -90,10 +96,10 @@ export const ValidationMessages = {
     durationMs: 3000
   }),
 
-  MANUAL_CONFIG_LOADED: (): ValidationMessage => ({
-    type: 'success',
-    text: '✅ Configuración manual cargada (sin firma digital)',
-    durationMs: 3000
+  NO_HASH_SIGNATURE: (): ValidationMessage => ({
+    type: 'error',
+    text: 'El archivo adjuntado no es válido: falta la firma digital (hash) requerida para la validación.',
+    durationMs: 4000
   }),
 
   INVALID_SIGNATURE: (): ValidationMessage => ({
@@ -155,7 +161,7 @@ export const ValidationMessages = {
   // === Mensajes de Validación de Formulario ===
   MISSING_REQUIRED_FIELDS: (): ValidationMessage => ({
     type: 'error',
-    text: '❌ Campos requeridos faltantes: nameMock, url, serviceCode, httpMethod, httpCodeResponseValue y delayMs son obligatorios',
+    text: '❌ Campos requeridos faltantes: nameMock, url, serviceCode, httpMethod, httpCodeResponseValue, delayMs o body son obligatorios',
     durationMs: 5000
   }),
 

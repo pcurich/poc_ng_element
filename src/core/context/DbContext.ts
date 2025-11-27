@@ -122,7 +122,13 @@ export class DbContext implements IDbContext {
   }
 
   async getDB(): Promise<IDBDatabase> {
-    if (!this.dbPromise) await this.open();
+    if (!this.dbPromise) {
+      try {
+        await this.open();
+      } catch (error) {
+        throw new Error('Database instance not available');
+      }
+    }
     if (this.dbInstance && this.isConnectionOpen) return this.dbInstance;
     
     // Caso edge - debería ser muy raro

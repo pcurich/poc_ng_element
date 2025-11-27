@@ -1,5 +1,7 @@
 import { Observable } from 'rxjs';
 import { HttpMockEntity } from '../../../core/models/HttpMockEntity';
+import { ValidationMessage } from '../../../core/constants/validation-messages';
+ 
 
 /**
  * 🎭 Interfaces para HttpMockManagerPresenter
@@ -21,19 +23,6 @@ export interface IHttpMockManagerPresenterState {
   lastOperation: string | null;
 }
 
-/**
- * Tipo de mensaje de validación
- */
-export type ValidationMessageType = 'success' | 'error' | 'warning' | 'info';
-
-/**
- * Estructura de mensaje de validación
- */
-export interface ValidationMessage {
-  type: ValidationMessageType;
-  text: string;
-  durationMs?: number;
-}
 
 /**
  * Eventos reactivos del presenter
