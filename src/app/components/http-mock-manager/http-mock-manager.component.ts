@@ -1,9 +1,9 @@
 import { Component, OnInit, Input, Output, EventEmitter, signal, computed, ViewEncapsulation, OnDestroy, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { HttpMethod } from '../../../core/models/HttpMockEntity';
+import { FormsModule, ReactiveFormsModule, FormControl, FormGroup, Validators } from '@angular/forms';
+import { HttpMethod, HttpMockEntity } from '../../../core/models/HttpMockEntity';
 import { HttpMockManagerPresenter } from './http-mock-manager.presenter';
-import { ContextOption, MockSchema, MockBody, DatabaseConfig, DatabaseIndex, ValidationMessage } from '../interfaces';
+import { ContextOption, MockSchema, MockBody, DatabaseConfig, DatabaseIndex } from '../interfaces';
 import {
   ORMFactory,
   generateHash,
@@ -15,7 +15,8 @@ import {
   validateImportedFile,
   isExportMocksData,
   isExportDatabaseData,
-  ValidationMessages
+  ValidationMessages,
+  ValidationMessage
 } from '../../../core';
 
 /**
@@ -29,12 +30,18 @@ import {
 @Component({
   selector: 'http-mock-manager',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule],
   templateUrl: './http-mock-manager.component.html',
   styleUrl: './http-mock-manager.component.scss',
   encapsulation: ViewEncapsulation.ShadowDom
 })
 export class HttpMockManagerComponent implements OnInit, OnDestroy {
+  // Reactive Form para el body JSON
+  public bodyForm!: FormGroup;
+
+  // === Reactive Form ===
+  public mockForm!: FormGroup;
+  private formInitialized = false;
 
   // === Props de entrada (equivalentes a @Prop en Stencil) ===
 
@@ -129,41 +136,46 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   public shouldShowDatabaseSetup = computed(() => this.presenter.shouldShowDatabaseSetup());
   public shouldShowManagementTabs = computed(() => this.presenter.shouldShowManagementTabs());
 
-  // === Validación de formulario ===
-  public isFormValid = computed(() => {
-    console.log('🔍 Validating form with values:', {  
-      nameMock: this.nameMock,
-      url: this.url,
-      serviceCode: this.serviceCode,
-      httpMethod: this.httpMethod,
-      httpCodeResponseValue: this.httpCodeResponseValue,
-      delayMs: this.delayMs
-    })
-    return !!(
-      this.nameMock.trim() &&
-      this.url.trim() &&
-      this.serviceCode.trim() &&
-      this.httpMethod &&
-      this.httpCodeResponseValue &&
-      (this.delayMs !== null || this.delayMs !== undefined)
-    );
-  });
-
   // ========== LIFECYCLE METHODS ==========
 
   async ngOnInit() {
+    
+    // this.showSaveConfirmation();
     // Inicializar selectedContext si no está definido
     this.selectedContext = this.selectedContext ?? this.contextOptions[0];
 
     // Inicializar copia editable de contextOptions
     this.contextOptionsState.set([...this.contextOptions]);
 
+    // Inicializar Reactive Form para Mock Config
+    this.initMockForm();
+
+    // Inicializar Reactive Form para Body
+    this.initBodyForm();
+
     // Inicializar el presenter
     await this.initializePresenter();
 
     // Suscribirse a eventos del presenter
     this.subscribeToPresenterEvents();
+  }
+  public initBodyForm(): void {
+    this.bodyForm = new FormGroup ({
+      responseBody: new FormControl(this.responseBody, [Validators.required, Validators.minLength(2)]),
+    });
+  }
 
+  public initMockForm(): void {
+    if (this.formInitialized) return;
+    this.mockForm = new FormGroup ({
+      nameMock: new FormControl(this.nameMock, [Validators.required, Validators.maxLength(100)]),
+      serviceCode: new FormControl(this.serviceCode, [Validators.required, Validators.maxLength(100)]),
+      url: new FormControl(this.url, [Validators.required, Validators.maxLength(300)]),
+      httpMethod: new FormControl(this.httpMethod, [Validators.required]),
+      httpCodeResponseValue: new FormControl(this.httpCodeResponseValue, [Validators.required]),
+      delayMs: new FormControl(this.delayMs, [Validators.required, Validators.min(0)]),
+    });
+    this.formInitialized = true;
   }
 
   private async initializePresenter(): Promise<void> {
@@ -180,7 +192,7 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     }
   }
 
-  private subscribeToPresenterEvents(): void {
+  public subscribeToPresenterEvents(): void {
     // Suscribirse a eventos del presenter para propagar al exterior
     this.presenter.events.onMockCreated.subscribe(mock => {
       console.log('✅ Mock created:', mock);
@@ -225,10 +237,10 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   // === Métodos de drag & drop ===
 
   startDrag(event: MouseEvent): void {
-    const target = event.target as HTMLElement;
 
-    // Lista de elementos y clases que no deben iniciar el drag
-    const nonDraggableSelectors = [
+    const target = event.target as HTMLElement;
+    // Permitir override en tests
+    const nonDraggableSelectors = (this as any).nonDraggableSelectors || [
       'button', 'input', 'select', 'textarea', 'a',
       '.btn', '.form-input', '.form-select', '.form-textarea',
       '.control-btn', '.sub-tab-btn', '.group-btn'
@@ -245,7 +257,7 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
       }
 
       // Verificar clases CSS
-      const hasNonDraggableClass = nonDraggableSelectors.some(selector =>
+      const hasNonDraggableClass = nonDraggableSelectors.some((selector: string) =>
         selector.startsWith('.') && element!.classList.contains(selector.substring(1))
       );
 
@@ -329,7 +341,7 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     });
   };
 
-  private stopDrag = (): void => {
+  stopDrag = (): void => {
     if (!this.dragging) return; // Prevenir múltiples calls
 
     this.dragging = false;
@@ -386,9 +398,10 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
 
       // Verificar si tiene hash (archivo exportado por el sistema)
       if (!parsed._hash) {
-        // Archivo sin hash - probablemente configuración manual
-        this.loadManualConfiguration(parsed);
+        // Archivo sin hash: mostrar mensaje de error y no cargar
         input.value = '';
+        const message = ValidationMessages.NO_HASH_SIGNATURE();
+        this.presenter.emitValidationMessage(message.type, message.text, message.durationMs);
         return;
       }
 
@@ -450,34 +463,6 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Carga configuración manual (archivos sin firma digital)
-   * @param parsed Objeto parseado del JSON
-   */
-  private loadManualConfiguration(parsed: any): void {
-    // Asignar campos de manera segura (caso config/database)
-    if (parsed.selectedContext) this.selectedContext = parsed.selectedContext;
-    if (parsed.headers && typeof parsed.headers === 'object') this.headers = { ...parsed.headers };
-    if (typeof parsed.nameMock !== 'undefined') this.nameMock = String(parsed.nameMock);
-    if (typeof parsed.serviceCode !== 'undefined') this.serviceCode = String(parsed.serviceCode);
-    if (typeof parsed.url !== 'undefined') this.url = String(parsed.url);
-    if (typeof parsed.httpMethod !== 'undefined') this.httpMethod = parsed.httpMethod as HttpMethod;
-    if (typeof parsed.httpCodeResponseValue !== 'undefined') this.httpCodeResponseValue = Number(parsed.httpCodeResponseValue);
-    if (typeof parsed.delayMs !== 'undefined') this.delayMs = Number(parsed.delayMs);
-    if (typeof parsed.responseBody !== 'undefined') {
-      this.responseBody = typeof parsed.responseBody === 'string'
-        ? parsed.responseBody
-        : JSON.stringify(parsed.responseBody);
-    }
-    // Notificar cambio de contexto si es necesario
-    if (parsed.selectedContext) {
-      this.contextTypeChangeEvent.emit(this.selectedContext);
-    }
-
-    const message = ValidationMessages.MANUAL_CONFIG_LOADED();
-    this.presenter.emitValidationMessage(message.type, message.text, message.durationMs);
-  }
-
   // ========== MÉTODOS DE GUARDADO ==========
 
   async saveContext(): Promise<void> {
@@ -500,47 +485,35 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   private async saveCompleteMock(): Promise<boolean> {
     try {
       // Validar que TODOS los campos requeridos estén completos
-      if (!this.nameMock.trim() || 
-          !this.url.trim() || 
-          !this.serviceCode.trim() || 
-          !this.httpMethod || 
-          !this.httpCodeResponseValue || 
-          this.delayMs === null || 
-          this.delayMs === undefined) {
+      if (this.mockForm.invalid || this.bodyForm.invalid) {
         console.error('❌ Missing required fields: nameMock, url, serviceCode, httpMethod, httpCodeResponseValue and delayMs are required');
         const message = ValidationMessages.MISSING_REQUIRED_FIELDS();
         this.presenter.emitValidationMessage(message.type, message.text, message.durationMs);
         return false;
       }
 
-      // Crear primero el schema
+      // Tomar valores del mockForm y bodyForm
+      const mockFormValue = this.mockForm.value;
+      const bodyFormValue = this.bodyForm.value;
+
       const schema: MockSchema = {
-        nameMock: this.nameMock,
-        url: this.url,
-        httpMethod: this.httpMethod,
-        httpCodeResponseValue: this.httpCodeResponseValue,
-        serviceCode: this.serviceCode,
-        delayMs: this.delayMs,
+        nameMock: mockFormValue.nameMock,
+        url: mockFormValue.url,
+        httpMethod: mockFormValue.httpMethod,
+        httpCodeResponseValue: mockFormValue.httpCodeResponseValue,
+        serviceCode: mockFormValue.serviceCode,
+        delayMs: mockFormValue.delayMs,
         headers: Object.keys(this.headers).length > 0 ? this.headers : undefined,
       };
 
       let savedMock: any = null;
-      let isUpdate = false;
 
       // Validar si existe un mock con el mismo serviceCode
-      const existingMockByServiceCode = await this.presenter.findMockByServiceCode(this.serviceCode);
+      const existingMockByServiceCode = await this.presenter.findMockByServiceCode(schema.serviceCode);
       
-      // Validar si existe un mock con el mismo nombre
-      const existingMockByName = await this.presenter.findMockByName(this.nameMock);
-
       if (existingMockByServiceCode && existingMockByServiceCode.id) {
-        console.log(`🔄 Mock with serviceCode "${this.serviceCode}" already exists. Updating...`);
+        console.log(`🔄 Mock with serviceCode "${mockFormValue.serviceCode}" already exists. Updating...`);
         savedMock = await this.presenter.handleUpdateMockSchema(existingMockByServiceCode.id, schema);
-        isUpdate = true;
-      } else if (existingMockByName && existingMockByName.id) {
-        console.log(`🔄 Mock with name "${this.nameMock}" already exists. Updating...`);
-        savedMock = await this.presenter.handleUpdateMockSchema(existingMockByName.id, schema);
-        isUpdate = true;
       } else {
         // Si no existe ninguno, crear nuevo
         savedMock = await this.presenter.handleSaveMockSchema(schema);
@@ -548,10 +521,10 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
 
       if (savedMock && savedMock.id) {
         console.log('✅ Mock saved successfully with ID:', savedMock.id);
-
+        
         // Luego guardar el body
         const mockBody: MockBody = {
-          responseBody: this.responseBody
+          responseBody: bodyFormValue.responseBody,
         };
 
         await this.presenter.handleSaveMockBody(mockBody, savedMock.id);
@@ -579,16 +552,26 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   }
 
   private resetForm(): void {
-    this.nameMock = '';
-    this.serviceCode = '';
-    this.url = '';
-    this.httpMethod = 'GET';
-    this.httpCodeResponseValue = 200;
-    this.delayMs = 1000;
-    this.responseBody = '{}';
     this.headers = {};
     this.newHeaderKey.set('');
     this.newHeaderValue.set('');
+    // Resetear formularios reactivos si existen
+    if (this.mockForm) {
+      this.mockForm.reset({
+        nameMock: '',
+        serviceCode: '',
+        url: '',
+        httpMethod: 'GET',
+        httpCodeResponseValue: 200,
+        delayMs: 1000
+      });
+    }
+
+    if (this.bodyForm) {
+      this.bodyForm.reset({
+        responseBody: '{}'
+      });
+    }
   }
 
   // ========== MÉTODOS DE GESTIÓN DE HEADERS ==========
@@ -727,13 +710,15 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
       const firstMock = await this.presenter.handleLoadMocksByServiceCodeWithAutoPopulation(selectedServiceCode);
 
       if (firstMock) {
-        // Auto-poblar campos de Mock Config
-        this.nameMock = firstMock.name || '';
-        this.serviceCode = firstMock.serviceCode;
-        this.url = firstMock.url;
-        this.httpMethod = firstMock.method as HttpMethod;
-        this.httpCodeResponseValue = firstMock.httpCodeResponseValue;
-        this.delayMs = firstMock.delayMs;
+        // Auto-poblar campos de Mock Config usando Reactive Forms
+        this.mockForm.patchValue({
+          nameMock: firstMock.name || '',
+          serviceCode: firstMock.serviceCode,
+          url: firstMock.url,
+          httpMethod: firstMock.method as HttpMethod,
+          httpCodeResponseValue: firstMock.httpCodeResponseValue,
+          delayMs: firstMock.delayMs,
+        });
 
         // Auto-poblar Headers
         if (firstMock.headers) {
@@ -742,9 +727,10 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
           this.headers = {};
         }
 
-        // Auto-poblar Body
-        this.responseBody = firstMock.responseBody || '{}';
-
+        // Auto-poblar Body usando Reactive Form
+        this.bodyForm.patchValue({
+          responseBody: firstMock.responseBody || '{}',
+        });
       }
     }
   }
@@ -873,15 +859,22 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
 
   // === Métodos de edición y formato ===
 
-  editMock(mock: any): void {
-    // Cargar los datos del mock en el formulario para edición
-    this.nameMock = mock.name;
-    this.serviceCode = mock.serviceCode;
-    this.url = mock.url;
-    this.httpMethod = mock.method;
-    this.httpCodeResponseValue = mock.httpCodeResponseValue;
-    this.delayMs = mock.delayMs || 1000;
-    this.responseBody = mock.responseBody || '{}';
+  editMock(mock: HttpMockEntity): void {
+    // Cargar los datos del mock en los formularios reactivos para edición
+    this.mockForm.patchValue({
+      nameMock: mock.name || '',
+      serviceCode: mock.serviceCode,
+      url: mock.url,
+      httpMethod: mock.method,
+      httpCodeResponseValue: mock.httpCodeResponseValue,
+      delayMs: mock.delayMs || 1000,
+    });
+
+    this.bodyForm.patchValue({
+      responseBody: mock.responseBody || '{}',
+    });
+
+    this.headers = mock.headers ? { ...mock.headers } : {};
 
     // Cambiar a HTTP Definition y activar Mock Config (sub-tab 1)
     this.setActiveGroup('http');
@@ -891,8 +884,9 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
 
   formatJson(): void {
     try {
-      const parsed = JSON.parse(this.responseBody);
+      const parsed = JSON.parse(this.bodyForm.value.responseBody);
       this.responseBody = JSON.stringify(parsed, null, 2);
+      this.bodyForm.patchValue({ responseBody: this.responseBody });
       const message = ValidationMessages.JSON_FORMATTED();
       this.presenter.emitValidationMessage(message.type, message.text, message.durationMs);
     } catch (error) {
@@ -904,7 +898,7 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
 
   validateJson(): void {
     try {
-      JSON.parse(this.responseBody);
+      JSON.parse(this.bodyForm.value.responseBody);
       console.log('✅ JSON is valid');
       const message = ValidationMessages.JSON_VALID();
       this.presenter.emitValidationMessage(message.type, message.text, message.durationMs);
@@ -991,13 +985,11 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   continueEditing(): void {
     this.showSaveConfirmation.set(false);
     console.log('📝 Usuario decidió continuar editando el mock actual');
-    // No hacer nada, mantener el formulario como está
   }
 
   createNewRecord(): void {
     this.showSaveConfirmation.set(false);
     console.log('➕ Usuario decidió crear un nuevo registro');
-    // Limpiar formulario para nuevo registro
     this.resetForm();
   }
 
