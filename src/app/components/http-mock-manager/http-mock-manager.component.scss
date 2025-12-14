@@ -612,16 +612,39 @@ button.btn-danger[disabled] {
 }
 
 /* Refuerzo visual para todos los botones deshabilitados */
-.btn:disabled,
-.btn-success:disabled,
-.btn-secondary:disabled,
-.btn-danger:disabled {
-    background: #7d7f80 !important;
-    color: #e0e0e0 !important;
+button.btn-success[disabled],
+button.btn[disabled],
+button.btn-secondary[disabled],
+button.btn-danger[disabled] {
+    background: #bdbdbd !important;
+    color: #f5f5f5 !important;
+    border: 1.5px dashed #888 !important;
     cursor: not-allowed !important;
-    opacity: 0.6 !important;
-    border-color: #7d7f80 !important;
+    opacity: 0.55 !important;
+    filter: grayscale(0.5) brightness(0.95) !important;
     box-shadow: none !important;
+    text-shadow: none !important;
+    transition: none !important;
+}
+// === BLOQUES AGREGADOS SEGÚN CÓDIGO PROPORCIONADO ===
+.section-header-flex {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.section-header-flex .header-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.btn-new-record {
+    white-space: nowrap;
+    font-size: 1rem;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 }
 
 .btn-danger {
