@@ -2,6 +2,24 @@
 
 > Self-contained Web Component + ORM Library para gestión de HTTP Mocks con IndexedDB
 
+## ⚠️ IMPORTANTE: Custom Element Tag
+
+### ✅ Tag Correcto: `<http-mock-manager>`
+
+Este proyecto exporta el custom element **`http-mock-manager`**, NO `app-root`.
+
+```html
+<!-- ✅ CORRECTO -->
+<http-mock-manager></http-mock-manager>
+
+<!-- ❌ INCORRECTO - No usar -->
+<app-root></app-root>
+```
+
+**Nota:** El tag `app-root` es solo para desarrollo interno del proyecto. La librería exporta únicamente `http-mock-manager` como custom element público.
+
+---
+
 ## 🎯 Propósito del Proyecto
 
 **HTTP Mock Manager** es una solución dual que proporciona:
@@ -18,6 +36,7 @@
 - ✅ **298 KB** - Bundle único con todas las dependencias incluidas
 - ✅ **Tree-shakeable** - Solo incluye código usado
 - ✅ **TypeScript** - Tipado completo y seguro
+- ✅ **Clean Export** - Sin tags adicionales ni contaminación del DOM
 
 ---
 
@@ -38,7 +57,8 @@ npm run export:standalone
 ```
 export-standalone/
 ├── http-mock-manager.js  (298 KB) - Web component autocontenido
-└── index.html                     - Demo completo funcional
+├── index.html                     - Demo completo funcional
+└── README.md                      - Guía de uso
 ```
 
 #### Uso:
@@ -492,7 +512,31 @@ import { ORMFactory, HttpMockService, provideHttpMockORM } from 'poc-ng-element/
 
 ---
 
-## 🔑 Tecnologías
+## � Documentación Completa
+
+Este proyecto incluye documentación exhaustiva para diferentes necesidades:
+
+### 🚀 Para Empezar
+- **[DOCS_INDEX.md](DOCS_INDEX.md)** - Índice completo de documentación (¡EMPIEZA AQUÍ!)
+- **[LIBRARY_USAGE.md](LIBRARY_USAGE.md)** - Guía completa de integración en Angular 16, 18+
+- **[FAQ.md](FAQ.md)** - Preguntas y respuestas frecuentes
+
+### 🔧 Documentación Técnica
+- **[TECHNICAL_ANALYSIS.md](TECHNICAL_ANALYSIS.md)** - Análisis del problema app-root y soluciones
+- **[VISUAL_DIAGRAM.md](VISUAL_DIAGRAM.md)** - Diagramas visuales del problema y solución
+- **[SOLUTION_SUMMARY.md](SOLUTION_SUMMARY.md)** - Resumen ejecutivo
+
+### 🔄 Migración
+- **[MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)** - Guía para migrar de versiones anteriores
+
+### 📖 Referencia
+- **[index.d.ts](index.d.ts)** - Definiciones TypeScript completas
+
+**👉 Si es tu primera vez, comienza con [DOCS_INDEX.md](DOCS_INDEX.md)**
+
+---
+
+## �🔑 Tecnologías
 
 - **Angular**: 20.3.12
 - **TypeScript**: 5.9.3

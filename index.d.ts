@@ -1,8 +1,17 @@
 /**
  * 📦 Type definitions for poc-ng-element
  * 
- * This package exports a self-contained Web Component.
- * Importing this package will register the <http-mock-manager> custom element.
+ * This package exports a self-contained Web Component for HTTP Mock Management.
+ * 
+ * ⚠️ IMPORTANT:
+ * - Custom Element Tag: <http-mock-manager>
+ * - NOT exported: <app-root> (internal development only)
+ * 
+ * Usage:
+ *   <script src="http-mock-manager.js"></script>
+ *   <http-mock-manager serviceCode="my-service" url="/api/endpoint"></http-mock-manager>
+ * 
+ * See LIBRARY_USAGE.md for complete integration guide.
  */
 
 export interface ContextOption {

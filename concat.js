@@ -9,7 +9,20 @@ const path = require('path');
  * 2. Incluye todas las dependencias de Angular embebidas
  * 3. Genera un custom element completamente independiente
  * 4. Crea documentación de uso
+ * 
+ * Flags:
+ * --keep-logs : Mantiene los console.log en el bundle (útil para desarrollo)
  */
+
+// Leer argumentos de línea de comandos
+const args = process.argv.slice(2);
+const keepLogs = args.includes('--keep-logs');
+
+if (keepLogs) {
+  console.log('🔊 Console logs will be preserved in bundle');
+} else {
+  console.log('🔇 Console logs will be removed from bundle');
+}
 
 async function concatElements() {
   const distPath = path.join(__dirname, 'dist', 'browser');
@@ -89,7 +102,24 @@ async function concatElements() {
 
     for (const file of orderedFiles) {
       const filePath = path.join(distPath, file);
-      const content = await fs.readFile(filePath, 'utf8');
+      let content = await fs.readFile(filePath, 'utf8');
+      
+      // 🔧 Limpiar referencias a app-root que no se usan en el custom element
+      // Solo queremos exponer http-mock-manager, no app-root
+      content = content
+        .replace(/selector:\s*['"`]app-root['"`]/g, 'selector: "app-root-unused"')
+        .replace(/customElements\.define\(\s*['"`]app-root['"`]/g, 'customElements.define("app-root-unused"')
+        .replace(/<app-root>/g, '<app-root-unused>')
+        .replace(/<\/app-root>/g, '</app-root-unused>');
+      
+      // 🔇 Eliminar console.log para bundle de producción limpio (solo si no está el flag --keep-logs)
+      // Mantener console.warn y console.error para debugging crítico
+      if (!keepLogs) {
+        content = content
+          .replace(/console\.log\([^)]*\);?/g, '/* console.log removed */')
+          .replace(/console\.debug\([^)]*\);?/g, '/* console.debug removed */')
+          .replace(/console\.info\([^)]*\);?/g, '/* console.info removed */');
+      }
       
       // Envolver cada archivo en su propio scope para evitar conflictos
       concatenatedContent += `
