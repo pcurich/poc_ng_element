@@ -36,25 +36,32 @@ import { HttpMockRepository } from './repositories/HttpMockRepository';
 // Re-exportar todo lo necesario
 export { HttpMockService } from './services/HttpMockService';
 export { HttpMockRepository } from './repositories/HttpMockRepository';
-export { HttpMockEntity, HttpMethod, IHttpMockData } from './models/HttpMockEntity';
-export { ORMFactory } from './index';
+export { HttpMockEntity, HttpMethod, IHttpMockData } from './entities/HttpMockEntity';
+export { ORMFactory } from './factories/ORMFactory';
 
 // Re-exportar interfaces
 export type { 
   IHttpMockServiceState,
   IHttpInterceptionConfig,
   IHttpInterceptionResult,
+  IHttpMockResponse,
   ICleanupOptions
-} from './services/HttpMockService';
+} from './types/service.types';
+
+
 
 export type { 
-  IHttpMockStatistics,
-  IHttpMockSearchOptions
+  IHttpMockStatistics  
 } from './repositories/HttpMockRepository';
 
 export type {
   IDbContext
 } from './context/IDbContext';
+
+export type {
+  IQueryOptions,
+  IPaginatedResult
+} from './types/repository.types';
 
 export type {
   IDbConfig,

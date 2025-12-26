@@ -1,0 +1,8 @@
+    <div class="db-monitor">
+      <h3>Database Health</h3>
+      <div>Active Transactions: {{ health()?.transactions.active }}</div>
+      <div>Pending: {{ health()?.transactions.states.PENDING }}</div>
+      <div>Active: {{ health()?.transactions.states.ACTIVE }}</div>
+      <div>Completed: {{ health()?.transactions.states.COMPLETED }}</div>
+      <div>Errors: {{ health()?.transactions.states.ERROR }}</div>
+    </div>

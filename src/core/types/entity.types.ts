@@ -1,6 +1,11 @@
 /**
- * 🏗️ Interfaces base para entidades del ORM
- * Siguiendo principios SOLID para arquitectura limpia
+ * 🏷️ Entity Types - Metadata and Entity Interfaces
+ * 
+ * Tipos y interfaces para definición de entidades, metadatos y validación.
+ * 
+ * Principios SOLID aplicados:
+ * - Interface Segregation: Interfaces específicas para cada concepto
+ * - Dependency Inversion: Contratos bien definidos para implementaciones
  */
 
 /**
@@ -21,14 +26,54 @@ export interface IPropertyMetadata {
 }
 
 /**
- * Metadatos completos de una entidad (versión simplificada para modelos)
+ * Configuración de un índice
+ */
+export interface IIndexMetadata {
+  name: string;
+  keyPath: string | string[];
+  unique?: boolean;
+  multiEntry?: boolean;
+}
+
+/**
+ * Metadatos completos de una entidad
  */
 export interface IEntityMetadata {
   tableName: string;
   primaryKey: string;
   properties: IPropertyMetadata[];
-  indexes?: string[]; // Simplificado para compatibilidad
+  indexes?: IIndexMetadata[];
   version?: number;
+}
+
+/**
+ * Resultado de validación
+ */
+export interface IValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings?: string[];
+}
+
+/**
+ * Validador de entidad
+ */
+export interface IEntityValidator<T = any> {
+  validate(entity: T): IValidationResult;
+}
+
+/**
+ * Decorador para propiedades de entidad
+ */
+export interface IPropertyDecorator {
+  (target: any, propertyKey: string): void;
+}
+
+/**
+ * Factory para crear validadores
+ */
+export interface IValidatorFactory {
+  createValidator<T>(metadata: IEntityMetadata): IEntityValidator<T>;
 }
 
 /**
@@ -41,7 +86,7 @@ export interface IEntity<TKey = string | number> {
   updatedAt?: Date;
   
   getMetadata(): IEntityMetadata;
-  validate(): { isValid: boolean; errors: string[] };
+  validate(): IValidationResult;
   toPlainObject(): Record<string, any>;
   touch(): void;
 }
@@ -69,12 +114,4 @@ export interface IAuditableEntity<TKey = string | number>
   createdBy?: string;
   updatedBy?: string;
   deletedBy?: string;
-}
-
-/**
- * Resultado de validación
- */
-export interface IValidationResult {
-  isValid: boolean;
-  errors: string[];
 }

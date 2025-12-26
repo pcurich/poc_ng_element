@@ -2,18 +2,14 @@ import { Injectable, signal, computed, OnDestroy, effect } from '@angular/core';
 import { Subject, BehaviorSubject } from 'rxjs';
 import { HttpMockService } from '../../../core/services/HttpMockService';
 import { HttpMockRepository } from '../../../core/repositories/HttpMockRepository';
-import { HttpMockEntity, IHttpMockData } from '../../../core/models/HttpMockEntity';
-import { ORMFactory } from '../../../core';
+import { HttpMockEntity, IHttpMockData } from '../../../core/entities/HttpMockEntity';
+import { IDbConfig, ORMFactory, ServiceCodeWithStats } from '../../../core';
 import { 
   ContextOption, 
-  MockSchema, 
-  MockBody,
   IHttpMockManagerPresenterState,
-  IHttpMockManagerPresenterEvents,
-  DatabaseConfig,
-  DatabaseStatus,
-  ServiceCodeWithStats 
-} from '../interfaces';
+  IHttpMockManagerPresenterEvents} from '../interfaces';
+import { DatabaseStatus } from '../../../core/types/service-code-stats.types';
+
 
 /**
  * 🎭 HttpMockManagerPresenter - Capa de presentación MVP
@@ -50,7 +46,7 @@ export class HttpMockManagerPresenter implements OnDestroy {
     exists: false,
     isInitialized: false
   });
-  private readonly _databaseConfig = signal<DatabaseConfig | null>(null);
+  private readonly _databaseConfig = signal<IDbConfig | null>(null);
 
   // === Computed properties públicas ===
   public readonly isInitialized = this._isInitialized.asReadonly();
@@ -191,20 +187,20 @@ export class HttpMockManagerPresenter implements OnDestroy {
   /**
    * Maneja la creación de un nuevo mock schema
    */
-  async handleSaveMockSchema(mockSchema: MockSchema): Promise<HttpMockEntity | null> {
+  async handleSaveMockSchema(mockSchema: Partial<IHttpMockData>): Promise<HttpMockEntity | null> {
     try {
       this.setLoading(true);
-      this.setLastOperation(`Creating mock: ${mockSchema.nameMock}`);
+      this.setLastOperation(`Creating mock: ${mockSchema.name}`);
 
       const mockData: Omit<IHttpMockData, 'id'> = {
-        name: mockSchema.nameMock,
-        serviceCode: mockSchema.serviceCode,
-        url: mockSchema.url,
-        method: mockSchema.httpMethod,
-        httpCodeResponseValue: mockSchema.httpCodeResponseValue,
-        delayMs: mockSchema.delayMs,
+        name: mockSchema.name!,
+        serviceCode: mockSchema.serviceCode!,
+        url: mockSchema.url!,
+        method: mockSchema.method!,
+        httpCodeResponseValue: mockSchema.httpCodeResponseValue!,
+        delayMs: mockSchema.delayMs!,
         headers: mockSchema.headers,
-        responseBody: '{}' // Default body, se actualizará después
+        responseBody: mockSchema.responseBody || '{}' // Default body, se actualizará después
       };
 
       const createdMock = await this.httpMockService.createMock(mockData);
@@ -213,7 +209,7 @@ export class HttpMockManagerPresenter implements OnDestroy {
         this._currentMocks.update(mocks => [...mocks, createdMock]);
         this.mockCreated$.next(createdMock);
         await this.refreshStatistics();
-        this.setLastOperation(`Mock "${mockSchema.nameMock}" created successfully`);
+        this.setLastOperation(`Mock "${mockSchema.name}" created successfully`);
         return createdMock;
       }
       
@@ -231,21 +227,21 @@ export class HttpMockManagerPresenter implements OnDestroy {
   /**
    * Maneja el guardado del body de un mock
    */
-  async handleSaveMockBody(mockBody: MockBody, mockId?: string): Promise<void> {
+  async handleSaveMockBody(mockBody: string, mockId?: string): Promise<void> {
     try {
       this.setLoading(true);
       this.setLastOperation('Saving mock body...');
 
       if (mockId) {
         // Actualizar el mock existente con el nuevo body
-        await this.httpMockService.updateMock(mockId, { responseBody: mockBody.responseBody });
+        await this.httpMockService.updateMock(mockId, { responseBody: mockBody });
         
         // Actualizar el estado local y obtener el mock actualizado
         let updatedMock: HttpMockEntity | undefined;
         this._currentMocks.update(mocks => 
           mocks.map(mock => {
             if (mock.id === mockId) {
-              mock.responseBody = mockBody.responseBody;
+              mock.responseBody = mockBody;
               updatedMock = mock;
             }
             return mock;
@@ -699,18 +695,10 @@ export class HttpMockManagerPresenter implements OnDestroy {
   public async loadDefaultDatabaseConfig(): Promise<void> {
     try {
       const defaultConfig = ORMFactory.getDefaultHttpMocksConfig();
-      
-      const objectStore = defaultConfig.objectStores[0];
-      const databaseConfig: DatabaseConfig = {
+      const databaseConfig: IDbConfig = {
         name: defaultConfig.name,
         version: defaultConfig.version,
-        objectStoreName: objectStore.name,
-        keyPath: (objectStore.options?.keyPath as string) || 'id',
-        indexes: objectStore.indexes?.map(index => ({
-          name: index.name,
-          keyPath: index.keyPath as string,
-          unique: index.options?.unique || false
-        })) || []
+        objectStores: defaultConfig.objectStores
       };
       
       this._databaseConfig.set(databaseConfig);
@@ -719,9 +707,11 @@ export class HttpMockManagerPresenter implements OnDestroy {
       console.log('📄 Database configuration loaded:', {
         name: databaseConfig.name,
         version: databaseConfig.version,
-        objectStoreName: databaseConfig.objectStoreName,
-        keyPath: databaseConfig.keyPath,
-        indexesCount: databaseConfig.indexes?.length || 0
+        objectStores: databaseConfig.objectStores.map(store => ({
+          name: store.name,
+          keyPath: store.options?.keyPath,
+          indexesCount: store.indexes?.length || 0
+        }))
       });
       
     } catch (error) {
@@ -769,30 +759,13 @@ export class HttpMockManagerPresenter implements OnDestroy {
   /**
    * Crea la base de datos con la configuración proporcionada
    */
-  async handleCreateDatabase(config: DatabaseConfig): Promise<void> {
+  async handleCreateDatabase(config: IDbConfig): Promise<void> {
     try {
       this.setLoading(true);
       this.setLastOperation('Creating database...');
 
-      // Convertir DatabaseConfig a IDbConfig
-      const dbConfig = {
-        name: config.name,
-        version: config.version,
-        objectStores: [
-          {
-            name: config.objectStoreName,
-            options: { keyPath: config.keyPath },
-            indexes: config.indexes.map(index => ({
-              name: index.name,
-              keyPath: index.keyPath,
-              options: { unique: index.unique }
-            }))
-          }
-        ]
-      };
-
       // Crear la base de datos
-      const dbContext = ORMFactory.createDbContext(dbConfig);
+      const dbContext = ORMFactory.createDbContext(config);
       await dbContext.open();
       await dbContext.close();
 
@@ -800,7 +773,7 @@ export class HttpMockManagerPresenter implements OnDestroy {
       this._databaseStatus.set({
         exists: true,
         isInitialized: false,
-        config: dbConfig
+        config: config
       });
 
       // Inicializar servicios
@@ -956,16 +929,16 @@ export class HttpMockManagerPresenter implements OnDestroy {
   /**
    * Actualiza un mock existente con un nuevo schema
    */
-  async handleUpdateMockSchema(mockId: string, mockSchema: MockSchema): Promise<HttpMockEntity | null> {
+  async handleUpdateMockSchema(mockId: string, mockSchema: Partial<IHttpMockData>): Promise<HttpMockEntity | null> {
     try {
       this.setLoading(true);
-      this.setLastOperation(`Updating mock: ${mockSchema.nameMock}`);
+      this.setLastOperation(`Updating mock: ${mockSchema.name}`);
 
       const updateData: Partial<IHttpMockData> = {
-        name: mockSchema.nameMock,
+        name: mockSchema.name,
         serviceCode: mockSchema.serviceCode,
         url: mockSchema.url,
-        method: mockSchema.httpMethod,
+        method: mockSchema.method,
         httpCodeResponseValue: mockSchema.httpCodeResponseValue,
         delayMs: mockSchema.delayMs,
         headers: mockSchema.headers
@@ -983,7 +956,7 @@ export class HttpMockManagerPresenter implements OnDestroy {
         this.mockCreated$.next(updatedMock);
         
         await this.refreshStatistics();
-        this.setLastOperation(`Mock "${mockSchema.nameMock}" updated successfully`);
+        this.setLastOperation(`Mock "${mockSchema.name}" updated successfully`);
         return updatedMock;
       }
       

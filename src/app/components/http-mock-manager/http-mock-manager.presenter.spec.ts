@@ -3,11 +3,11 @@ import { HttpMockManagerPresenter } from './http-mock-manager.presenter';
 import { HttpMockService } from '../../../core/services/HttpMockService';
 import { HttpMockRepository } from '../../../core/repositories/HttpMockRepository';
 import { ORMFactory, ServiceCodeWithStats } from '../../../core';
-import { HttpMockEntity, IHttpMockData } from '../../../core/models/HttpMockEntity';
+import { HttpMockEntity, IHttpMockData } from '../../../core/entities/HttpMockEntity';
 import { signal, WritableSignal } from '@angular/core';
 import { provideZonelessChangeDetection } from '@angular/core';
-import { ContextOption } from 'index';
-import { MockSchema } from '../interfaces/http-mock-manager-component.interface';
+import { ContextOption, MockSchema } from 'index';
+import { delay } from 'src/core/utils/async.utils';
 
 describe('HttpMockManagerPresenter', () => {
   let presenter: HttpMockManagerPresenter;
@@ -1539,7 +1539,7 @@ describe('HttpMockManagerPresenter', () => {
       const emittedValues: any[] = [];
       presenter.events.onValidationMessage.subscribe(value => emittedValues.push(value));
       presenter.emitValidationMessage('success', 'Test message');
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await delay(0);
       expect(emittedValues).toEqual([{ type: 'success', text: 'Test message', durationMs: undefined }]);
     });
 
@@ -1547,7 +1547,7 @@ describe('HttpMockManagerPresenter', () => {
       const emittedValues: any[] = [];
       presenter.events.onValidationMessage.subscribe(value => emittedValues.push(value));
       presenter.emitValidationMessage('error', 'Error message');
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await delay(0);
       expect(emittedValues).toEqual([{ type: 'error', text: 'Error message', durationMs: undefined }]);
     });
 
@@ -1555,7 +1555,7 @@ describe('HttpMockManagerPresenter', () => {
       const emittedValues: any[] = [];
       presenter.events.onValidationMessage.subscribe(value => emittedValues.push(value));
       presenter.emitValidationMessage('warning', 'Warning message');
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await delay(0);
       expect(emittedValues).toEqual([{ type: 'warning', text: 'Warning message', durationMs: undefined }]);
     });
 
@@ -1563,7 +1563,7 @@ describe('HttpMockManagerPresenter', () => {
       const emittedValues: any[] = [];
       presenter.events.onValidationMessage.subscribe(value => emittedValues.push(value));
       presenter.emitValidationMessage('info', 'Info message');
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await delay(0);
       expect(emittedValues).toEqual([{ type: 'info', text: 'Info message', durationMs: undefined }]);
     });
 
@@ -1571,7 +1571,7 @@ describe('HttpMockManagerPresenter', () => {
       const emittedValues: any[] = [];
       presenter.events.onValidationMessage.subscribe(value => emittedValues.push(value));
       presenter.emitValidationMessage('success', 'Test message', 5000);
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await delay(0);
       expect(emittedValues).toEqual([{ type: 'success', text: 'Test message', durationMs: 5000 }]);
     });
   });

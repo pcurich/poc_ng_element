@@ -1,5 +1,5 @@
 import { Observable } from 'rxjs';
-import { HttpMockEntity } from '../../../core/models/HttpMockEntity';
+import { HttpMockEntity, IHttpMockStatistics } from '../../../core';
 import { ValidationMessage } from '../../../core/constants/validation-messages';
  
 
@@ -18,7 +18,7 @@ export interface IHttpMockManagerPresenterState {
   isLoading: boolean;
   error: string | null;
   currentMocks: HttpMockEntity[];
-  statistics: any | null;
+  statistics: IHttpMockStatistics | null;
   selectedServiceCode: string | null;
   lastOperation: string | null;
 }

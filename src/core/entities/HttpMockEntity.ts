@@ -1,60 +1,15 @@
-/**
- * 🌐 HttpMockEntity - Entidad para simulación de peticiones HTTP
- * 
- * Esta entidad permite almacenar configuraciones para simular respuestas HTTP
- * cuando los servicios reales no estén disponibles. Útil para desarrollo,
- * testing y modo offline.
- * 
- * Siguiendo principios SOLID:
- * - Single Responsibility: Solo maneja datos de mock HTTP
- * - Open/Closed: Extensible para nuevos tipos de mock
- * - Interface Segregation: Interfaces específicas para HTTP mocking
- */
+import { IEntityMetadata, IPropertyMetadata } from '../types/entity.types';
+import { HttpMethod, IHttpMockData } from '../types/http-mock.types';
+import { AuditableEntity } from './base/AuditableEntity';
 
-import { AuditableEntity } from './BaseEntity';
-import { IEntityMetadata, IPropertyMetadata } from './interfaces';
-
-/**
- * Métodos HTTP soportados
- */
-export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS';
-
-/**
- * Estructura de datos para HttpMockEntity
- */
-export interface IHttpMockData {
-  id?: string;
-  /** Nombre descriptivo del mock (opcional) */
-  name?: string;
-  
-  /** Código del servicio para agrupación y organización */
-  serviceCode: string;
-  
-  /** URL o patrón de URL a interceptar */
-  url: string;
-  
-  /** Método HTTP a interceptar */
-  method: HttpMethod | string;
-  
-  /** Código de respuesta HTTP a simular */
-  httpCodeResponseValue: number;
-  
-  /** Delay en milisegundos antes de responder */
-  delayMs: number;
-  
-  /** Headers de respuesta personalizados */
-  headers?: Record<string, string>;
-  
-  /** Cuerpo de la respuesta como string JSON */
-  responseBody: string;
-}
 
 /**
  * Entidad HttpMock que extiende AuditableEntity
  * Proporciona funcionalidades completas de auditoría y validación
  */
 export class HttpMockEntity extends AuditableEntity implements IHttpMockData {
-  public name?: string;
+  public override id!: string;
+  public name!: string;
   public serviceCode!: string;
   public url!: string;
   public method!: HttpMethod | string;
@@ -68,9 +23,9 @@ export class HttpMockEntity extends AuditableEntity implements IHttpMockData {
    */
   constructor(data?: Partial<HttpMockEntity>) {
     super(data);
-    
+
     if (data) {
-      this.name = data.name;
+      this.name = data.name || '';
       this.serviceCode = data.serviceCode || '';
       this.url = data.url || '';
       this.method = data.method || 'GET';
@@ -154,7 +109,11 @@ export class HttpMockEntity extends AuditableEntity implements IHttpMockData {
       tableName: 'httpMocks',
       primaryKey: 'id',
       properties,
-      indexes: ['serviceCode', 'url', 'method'],
+      indexes: [
+        { name: 'serviceCode', keyPath: 'serviceCode' },
+        { name: 'url', keyPath: 'url' },
+        { name: 'method', keyPath: 'method' }
+      ],
       version: 1
     };
   }
@@ -220,7 +179,8 @@ export class HttpMockEntity extends AuditableEntity implements IHttpMockData {
       httpCodeResponseValue: this.httpCodeResponseValue,
       delayMs: this.delayMs,
       headers: this.headers ? { ...this.headers } : undefined,
-      responseBody: this.responseBody
+      responseBody: this.responseBody,
+      id: this.id
     };
   }
 
@@ -232,7 +192,7 @@ export class HttpMockEntity extends AuditableEntity implements IHttpMockData {
   public matchesRequest(url: string, method: string): boolean {
     const methodMatches = this.method.toUpperCase() === method.toUpperCase();
     const urlMatches = this.matchesUrl(url);
-    
+
     return methodMatches && urlMatches;
   }
 
@@ -301,7 +261,7 @@ export class HttpMockEntity extends AuditableEntity implements IHttpMockData {
     if (newDelayMs < 0) {
       throw new Error('El delay no puede ser negativo');
     }
-    
+
     this.delayMs = newDelayMs;
     this.touch();
   }
@@ -313,7 +273,7 @@ export class HttpMockEntity extends AuditableEntity implements IHttpMockData {
     if (!this.headers) {
       this.headers = {};
     }
-    
+
     this.headers[key] = value;
     this.touch();
   }
@@ -345,3 +305,5 @@ export class HttpMockEntity extends AuditableEntity implements IHttpMockData {
     return new HttpMockEntity({ ...currentData, ...overrides });
   }
 }
+
+export { HttpMethod, IHttpMockData };

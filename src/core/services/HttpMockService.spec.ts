@@ -1,7 +1,8 @@
 import { HttpMockService } from './HttpMockService';
 import { HttpMockRepository, IHttpMockStatistics } from '../repositories/HttpMockRepository';
-import { HttpMockEntity, IHttpMockData } from '../models/HttpMockEntity';
+import { HttpMockEntity, IHttpMockData } from '../entities/HttpMockEntity';
 import { ServiceCodeWithStats } from '../types/service-code-stats.types';
+import { getCurrentTimestamp } from '../utils/date.utils';
 
 class TestHttpMockService extends HttpMockService {
   constructor(repository: HttpMockRepository) {
@@ -601,7 +602,7 @@ describe('HttpMockService', () => {
 
     it('should cleanup old mocks', async () => {
       const oldMock = new HttpMockEntity({ ...mockData, id: 'old' });
-      (oldMock as any).createdAt = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000); // 8 days ago
+      (oldMock as any).createdAt = new Date(getCurrentTimestamp() - 8 * 24 * 60 * 60 * 1000); // 8 days ago
       (mockRepository.findAll as jasmine.Spy).and.returnValues(
         Promise.resolve([oldMock]), // First call returns the old mock
         Promise.resolve([]) // Second call returns empty array

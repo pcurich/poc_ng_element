@@ -1,50 +1,10 @@
-/**
- * 🌐 HttpMockRepository - Repository especializado para HTTP Mocks
- * 
- * Este repository proporciona operaciones específicas para la gestión
- * de mocks HTTP, incluyendo búsquedas optimizadas por índices y 
- * funcionalidades específicas para interceptación HTTP.
- * 
- * Principios SOLID aplicados:
- * - Single Responsibility: Gestión específica de HTTP mocks
- * - Open/Closed: Extendible para nuevas funcionalidades de mocking
- * - Liskov Substitution: Puede sustituir al BaseRepository
- * - Interface Segregation: Métodos específicos para HTTP mocks
- * - Dependency Inversion: Depende de abstracciones (IDbContext)
- */
-
 import { BaseRepository } from './BaseRepository';
-import { HttpMockEntity, HttpMethod, IHttpMockData } from '../models/HttpMockEntity';
+import { HttpMockEntity } from '../entities/HttpMockEntity';
 import { IDbContext } from '../context/IDbContext';
-import { ServiceCodeWithStats } from '../types/service-code-stats.types';
+import { IHttpMockStatistics, ServiceCodeWithStats } from '../types/service-code-stats.types';
+import { IQueryOptions } from '../types/repository.types';
+import { HttpMethod, IHttpMockData } from '../types/http-mock.types';
 
-/**
- * Interface específica para estadísticas de HTTP Mocks
- */
-export interface IHttpMockStatistics {
-  totalMocks: number;
-  mocksByServiceCode: Record<string, number>;
-  mocksByMethod: Record<HttpMethod | string, number>;
-  mocksByStatusCode: Record<number, number>;
-  averageDelayMs: number;
-  mostUsedServiceCodes: Array<{ serviceCode: string; count: number }>;
-}
-
-/**
- * Options para búsquedas específicas de HTTP Mocks
- */
-export interface IHttpMockSearchOptions {
-  serviceCode?: string;
-  method?: HttpMethod | string;
-  statusCode?: number;
-  urlPattern?: string;
-  minDelay?: number;
-  maxDelay?: number;
-}
-
-/**
- * Repository especializado para HttpMockEntity
- */
 export class HttpMockRepository extends BaseRepository<HttpMockEntity, string> {
 
   constructor(dbContext: IDbContext) {
@@ -115,38 +75,29 @@ export class HttpMockRepository extends BaseRepository<HttpMockEntity, string> {
   /**
    * Busca mocks con opciones de filtrado avanzado
    */
-  async findWithFilters(options: IHttpMockSearchOptions): Promise<HttpMockEntity[]> {
-    let results = await this.findAll();
-
-    if (options.serviceCode) {
-      results = results.filter(mock => mock.serviceCode === options.serviceCode);
-    }
-
-    if (options.method) {
-      results = results.filter(mock => 
-        mock.method.toUpperCase() === options.method!.toUpperCase()
-      );
-    }
-
-    if (options.statusCode) {
-      results = results.filter(mock => mock.httpCodeResponseValue === options.statusCode);
-    }
-
-    if (options.urlPattern) {
-      const regex = new RegExp(options.urlPattern, 'i');
-      results = results.filter(mock => regex.test(mock.url));
-    }
-
-    if (options.minDelay !== undefined) {
-      results = results.filter(mock => mock.delayMs >= options.minDelay!);
-    }
-
-    if (options.maxDelay !== undefined) {
-      results = results.filter(mock => mock.delayMs <= options.maxDelay!);
-    }
-
-    return results;
-  }
+  async findWithFilters(options: IQueryOptions<HttpMockEntity> ): Promise<HttpMockEntity[]> {
+  return this.findMany({
+    filter: (mock: HttpMockEntity) => {
+      // Usar el filter de IQueryOptions
+      if (options.filter) {
+        if (typeof options.filter === 'function') {
+          if (!options.filter(mock)) return false;
+        } else {
+          // Partial<HttpMockEntity>
+          const partial = options.filter as Partial<HttpMockEntity>;
+          if (partial.serviceCode && mock.serviceCode !== partial.serviceCode) return false;
+          if (partial.method && mock.method.toUpperCase() !== partial.method.toUpperCase()) return false;
+          if (partial.httpCodeResponseValue && mock.httpCodeResponseValue !== partial.httpCodeResponseValue) return false;
+        }
+      }
+      return true;
+    },
+    sortBy: options.sortBy,
+    sortDirection: options.sortDirection,
+    limit: options.limit,
+    offset: options.offset
+  });
+}
 
   /**
    * Busca mocks por rango de códigos de estado HTTP
@@ -298,11 +249,11 @@ export class HttpMockRepository extends BaseRepository<HttpMockEntity, string> {
     }
 
     const clonedData = originalMock.toPlainObject();
-    delete clonedData.id; // Remover ID para crear uno nuevo
-    clonedData.url = newUrl;
+    const { id, ...dataWithoutId } = clonedData; // Remover ID para crear uno nuevo
+    const newData = { ...dataWithoutId, url: newUrl };
 
     // Crear nueva entidad con los datos clonados
-    const newMock = new HttpMockEntity(clonedData);
+    const newMock = new HttpMockEntity(newData);
     return this.create(newMock);
   }
 
@@ -504,3 +455,5 @@ export class HttpMockRepository extends BaseRepository<HttpMockEntity, string> {
     }
   }
 }
+
+export { IHttpMockStatistics };

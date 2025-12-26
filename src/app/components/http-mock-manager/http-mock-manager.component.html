@@ -1,27 +1,44 @@
 <!-- 🌐 Http Mock Manager - Interfaz gráfica estilo chat flotante -->
-<div class="http-mock-manager" [style.bottom.px]="position().bottom" [style.right.px]="position().right"
-  [class.visible]="showForm()" [class.hidden]="!showForm()" (mousedown)="startDrag($event)">
+<div class="http-mock-manager" *ngIf="isComponentVisible()" [style.bottom.px]="position().bottom" [style.right.px]="position().right"
+  [class.visible]="showForm()" [class.hidden]="!showForm()" [class.minimized]="isMinimized()">
 
-  <!-- Header con drag handle y controles -->
-  <div class="header">
-    <div class="header-title">
-      <span class="icon">🌐</span>
-      <span>HTTP Mock Manager</span>
+  <!-- Vista minimizada - Globo flotante -->
+  <div class="floating-bubble" *ngIf="isMinimized()" (click)="toggleMinimize(); $event.stopPropagation()">
+    <div class="bubble-content">
+      <span class="bubble-icon">🌐</span>
+      <span class="bubble-badge" *ngIf="currentMocks().length > 0">{{ currentMocks().length }}</span>
     </div>
-    <div class="header-controls">
-      <button class="control-btn" (click)="toggleForm()" title="Minimizar/Restaurar">
-        {{ showForm() ? '▼' : '▲' }}
-      </button>
-    </div>
+    <div class="bubble-tooltip">HTTP Mock Manager</div>
   </div>
 
-  <!-- Mensaje de validación global - Visible en cualquier flujo -->
-  <div class="global-validation-message" *ngIf="jsonValidationMessage()" 
-       [class.success-message]="jsonValidationMessage()?.type === 'success'"
-       [class.error-message]="jsonValidationMessage()?.type === 'error'"
-       [class.info-message]="jsonValidationMessage()?.type === 'info'">
-    {{ jsonValidationMessage()?.text}}
-  </div>
+  <!-- Vista expandida - Interfaz completa -->
+  <div class="expanded-view" *ngIf="!isMinimized()">
+    <!-- Header con drag handle y controles -->
+    <div class="header" (mousedown)="startDrag($event)">
+      <div class="header-title">
+        <span class="icon">🌐</span>
+        <span>HTTP Mock Manager</span>
+      </div>
+      <div class="header-controls">
+        <button class="control-btn" (click)="toggleMinimize(); $event.stopPropagation()" title="Minimizar a globo">
+          ➖
+        </button>
+        <button class="control-btn" (click)="toggleForm(); $event.stopPropagation()" title="Maximizar/Restaurar">
+          {{ showForm() ? '◻️' : '⬜' }}
+        </button>
+        <button class="control-btn btn-close" (click)="closeComponent(); $event.stopPropagation()" title="Cerrar">
+          ✕
+        </button>
+      </div>
+    </div>
+
+    <!-- Mensaje de validación global - Visible en cualquier flujo -->
+    <div class="global-validation-message" *ngIf="jsonValidationMessage()" 
+         [class.success-message]="jsonValidationMessage()?.type === 'success'"
+         [class.error-message]="jsonValidationMessage()?.type === 'error'"
+         [class.info-message]="jsonValidationMessage()?.type === 'info'">
+      {{ jsonValidationMessage()?.text}}
+    </div>
 
   <!-- Contenido principal -->
   <div class="content" [class.collapsed]="!showForm()">
@@ -216,7 +233,7 @@
               </div>
               <div class="stat-item">
                 <span class="stat-label">Almacén de Objetos:</span>
-                <span class="stat-value">{{ databaseConfig()?.objectStoreName || 'Desconocido' }}</span>
+                <span class="stat-value">{{ getObjectStoreNames() }}</span>
               </div>
               <div class="stat-item">
                 <span class="stat-label">Estado:</span>
@@ -795,5 +812,7 @@
       </div>
     </div>
   </div>
+
+  </div> <!-- Cierre de expanded-view -->
 
 </div>

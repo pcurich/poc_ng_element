@@ -1,5 +1,3 @@
-import { HttpMethod } from '../../../core/models/HttpMockEntity';
-
 /**
  * 🔧 Interfaces para HttpMockManagerComponent
  * 
@@ -16,22 +14,3 @@ export interface ContextOption {
   useMock: boolean;
 }
 
-/**
- * Schema para definición de un mock HTTP
- */
-export interface MockSchema {
-  nameMock: string;
-  url: string;
-  httpMethod: HttpMethod;
-  httpCodeResponseValue: number;
-  serviceCode: string;
-  delayMs: number;
-  headers?: Record<string, string>;
-}
-
-/**
- * Cuerpo de respuesta del mock
- */
-export interface MockBody {
-  responseBody: string;
-}

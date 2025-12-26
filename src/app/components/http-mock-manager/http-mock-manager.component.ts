@@ -1,9 +1,10 @@
 import { Component, OnInit, Input, Output, EventEmitter, signal, computed, ViewEncapsulation, OnDestroy, effect } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, NgFor, NgIf } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormControl, FormGroup, Validators } from '@angular/forms';
-import { HttpMethod, HttpMockEntity } from '../../../core/models/HttpMockEntity';
+import { HttpMethod, HttpMockEntity } from '../../../core/entities/HttpMockEntity';
 import { HttpMockManagerPresenter } from './http-mock-manager.presenter';
-import { ContextOption, MockSchema, MockBody, DatabaseConfig, DatabaseIndex } from '../interfaces';
+import { ContextOption } from '../interfaces';
+import { IHttpMockData } from '../../../core';
 import {
   ORMFactory,
   generateHash,
@@ -16,7 +17,9 @@ import {
   isExportMocksData,
   isExportDatabaseData,
   ValidationMessages,
-  ValidationMessage
+  ValidationMessage,
+  IDbConfig,
+  IIndexConfig
 } from '../../../core';
 
 /**
@@ -30,7 +33,7 @@ import {
 @Component({
   selector: 'http-mock-manager',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, NgFor, NgIf],
   templateUrl: './http-mock-manager.component.html',
   styleUrl: './http-mock-manager.component.scss',
   encapsulation: ViewEncapsulation.ShadowDom
@@ -68,12 +71,12 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   @Input() dbVersion: number = 1; // Mínimo valor válido para evitar errores de validación
   @Input() dbObjectStoreName: string = '';
   @Input() dbKeyPath: string = '';
-  public dbIndexes: DatabaseIndex[] = [];
+  public dbIndexes: IIndexConfig[] = [];
 
   // === Eventos de salida (equivalentes a @Event en Stencil) ===
 
-  @Output() saveMockSchemaEvent = new EventEmitter<MockSchema>();
-  @Output() saveMockBodyEvent = new EventEmitter<MockBody>();
+  @Output() saveMockSchemaEvent = new EventEmitter<IHttpMockData>();
+  @Output() saveMockBodyEvent = new EventEmitter<string>();
   @Output() saveHeadersEvent = new EventEmitter<Record<string, string>>();
   @Output() databaseCreatedEvent = new EventEmitter<void>();
   @Output() deleteContextEvent = new EventEmitter<number>();
@@ -83,6 +86,8 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   // === Estado del componente con Angular Signals ===
 
   public showForm = signal<boolean>(false);
+  public isMinimized = signal<boolean>(false);
+  public isComponentVisible = signal<boolean>(true);
   public position = signal<{ bottom: number; right: number }>({ bottom: 32, right: 32 });
 
   // === Navegación contextual ===
@@ -139,7 +144,7 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
   // ========== LIFECYCLE METHODS ==========
 
   async ngOnInit() {
-    
+
     // this.showSaveConfirmation();
     // Inicializar selectedContext si no está definido
     this.selectedContext = this.selectedContext ?? this.contextOptions[0];
@@ -160,14 +165,14 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     this.subscribeToPresenterEvents();
   }
   public initBodyForm(): void {
-    this.bodyForm = new FormGroup ({
+    this.bodyForm = new FormGroup({
       responseBody: new FormControl(this.responseBody, [Validators.required, Validators.minLength(2)]),
     });
   }
 
   public initMockForm(): void {
     if (this.formInitialized) return;
-    this.mockForm = new FormGroup ({
+    this.mockForm = new FormGroup({
       nameMock: new FormControl(this.nameMock, [Validators.required, Validators.maxLength(100)]),
       serviceCode: new FormControl(this.serviceCode, [Validators.required, Validators.maxLength(100)]),
       url: new FormControl(this.url, [Validators.required, Validators.maxLength(300)]),
@@ -225,7 +230,7 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     // Suscribirse a eventos de mensajes de validación
     this.presenter.events.onValidationMessage.subscribe(message => {
       this.jsonValidationMessage.set(message);
-      
+
       // Auto-limpiar mensaje después del tiempo especificado
       const duration = message.durationMs || 3000;
       setTimeout(() => {
@@ -496,21 +501,22 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
       const mockFormValue = this.mockForm.value;
       const bodyFormValue = this.bodyForm.value;
 
-      const schema: MockSchema = {
-        nameMock: mockFormValue.nameMock,
+      const schema: Partial<IHttpMockData> = {
+        name: mockFormValue.nameMock,
         url: mockFormValue.url,
-        httpMethod: mockFormValue.httpMethod,
+        method: mockFormValue.httpMethod,
         httpCodeResponseValue: mockFormValue.httpCodeResponseValue,
         serviceCode: mockFormValue.serviceCode,
         delayMs: mockFormValue.delayMs,
         headers: Object.keys(this.headers).length > 0 ? this.headers : undefined,
+        responseBody: '{}' // Default, se actualizará después
       };
 
       let savedMock: any = null;
 
       // Validar si existe un mock con el mismo serviceCode
-      const existingMockByServiceCode = await this.presenter.findMockByServiceCode(schema.serviceCode);
-      
+      const existingMockByServiceCode = await this.presenter.findMockByServiceCode(schema.serviceCode!);
+
       if (existingMockByServiceCode && existingMockByServiceCode.id) {
         console.log(`🔄 Mock with serviceCode "${mockFormValue.serviceCode}" already exists. Updating...`);
         savedMock = await this.presenter.handleUpdateMockSchema(existingMockByServiceCode.id, schema);
@@ -521,20 +527,17 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
 
       if (savedMock && savedMock.id) {
         console.log('✅ Mock saved successfully with ID:', savedMock.id);
-        
-        // Luego guardar el body
-        const mockBody: MockBody = {
-          responseBody: bodyFormValue.responseBody,
-        };
 
-        await this.presenter.handleSaveMockBody(mockBody, savedMock.id);
+        schema.responseBody = bodyFormValue.responseBody
+
+        await this.presenter.handleSaveMockBody(bodyFormValue.responseBody, savedMock.id);
 
         // Actualizar estadísticas después de guardar el mock
         await this.refreshDatabaseStats();
 
         // Emitir eventos para compatibilidad
-        this.saveMockSchemaEvent.emit(schema);
-        this.saveMockBodyEvent.emit(mockBody);
+        this.saveMockSchemaEvent.emit(schema as IHttpMockData);
+        this.saveMockBodyEvent.emit(bodyFormValue.responseBody);
 
         // NO hacer reset automático - se manejará en la confirmación
         // Los mensajes de éxito ya se emiten desde el presenter
@@ -669,6 +672,18 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
     this.showForm.update(current => !current);
   }
 
+  toggleMinimize(): void {
+    this.isMinimized.update(current => !current);
+  }
+
+  closeComponent(): void {
+    // Ocultar completamente el componente del DOM
+    this.isComponentVisible.set(false);
+    // Opcional: También resetear el estado
+    this.showForm.set(false);
+    this.isMinimized.set(false);
+  }
+
   // ========== NAVEGACIÓN CONTEXTUAL ==========
 
   setActiveGroup(groupName: 'data' | 'http' | 'persistence'): void {
@@ -774,12 +789,19 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
 
   async createDatabase(): Promise<void> {
     try {
-      const config: DatabaseConfig = {
+      const config: IDbConfig = {
         name: this.dbName,
         version: this.dbVersion,
-        objectStoreName: this.dbObjectStoreName,
-        keyPath: this.dbKeyPath,
-        indexes: [...this.dbIndexes] // Usar los índices configurados por el usuario
+        objectStores: [{
+          name: this.dbObjectStoreName,
+          options: {
+            keyPath: this.dbKeyPath
+          },
+          indexes: this.dbIndexes.map(index => ({
+            name: index.name,
+            keyPath: index.keyPath
+          }))
+        }]
       };
 
       await this.presenter.handleCreateDatabase(config);
@@ -832,15 +854,13 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
       // Actualizar índice existente
       this.dbIndexes[existingIndexIndex] = {
         name: indexName,
-        keyPath: keyPath,
-        unique: false // Los índices no necesitan ser únicos
+        keyPath: keyPath
       };
     } else {
       // Agregar nuevo índice
       this.dbIndexes = [...this.dbIndexes, {
         name: indexName,
         keyPath: keyPath,
-        unique: false // Los índices no necesitan ser únicos
       }];
     }
 
@@ -855,6 +875,14 @@ export class HttpMockManagerComponent implements OnInit, OnDestroy {
 
   getIndexCount(): number {
     return this.dbIndexes.length;
+  }
+
+  getObjectStoreNames(): string {
+    const config = this.databaseConfig();
+    if (!config || !config.objectStores || config.objectStores.length === 0) {
+      return 'Ninguno';
+    }
+    return config.objectStores.map(store => store.name).join(', ');
   }
 
   // === Métodos de edición y formato ===

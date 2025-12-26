@@ -6,34 +6,11 @@
  * - Dependency Inversion: Dependencia de abstracciones, no concreciones
  */
 
-import { BaseEntity } from '../models/BaseEntity';
-import { IDbContext } from '../context/IDbContext';
+import { BaseEntity } from '../entities/base/BaseEntity';
 import { ITransactionContext } from '../types/database.types';
+import { IQueryOptions, IPaginatedResult } from '../types/repository.types';
 
-/**
- * 📋 Query Options para operaciones de consulta
- */
-export interface IQueryOptions<T = any> {
-  filter?: Partial<T> | ((item: T) => boolean);
-  sortBy?: keyof T;
-  sortDirection?: 'asc' | 'desc';
-  limit?: number;
-  offset?: number;
-  include?: string[]; // Para relaciones futuras
-}
 
-/**
- * 📊 Resultado paginado
- */
-export interface IPaginatedResult<T> {
-  items: T[];
-  total: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-  hasNext: boolean;
-  hasPrevious: boolean;
-}
 
 /**
  * ⚡ Repository básico - Interface principal
