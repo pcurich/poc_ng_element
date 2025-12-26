@@ -1,22 +1,15 @@
-/**
- * 🏗️ BaseRepository - Implementación base del patrón Repository
- * 
- * Principios SOLID aplicados:
- * - S: Responsabilidad única - Gestión de operaciones CRUD genéricas
- * - O: Abierto/Cerrado - Extensible para repositorios específicos
- * - L: Sustitución de Liskov - Puede ser sustituido por implementaciones específicas
- * - I: Interface Segregation - Implementa interfaces específicas
- * - D: Dependency Inversion - Depende de IDbContext (abstracción)
- */
-
-import { BaseEntity } from '../models/BaseEntity';
-import { IRepository, IQueryOptions, IPaginatedResult } from './IRepository';
+import { BaseEntity } from '../entities/base/BaseEntity';
+import { IRepository } from './IRepository';
 import { IDbContext } from '../context/IDbContext';
 import { ITransactionContext, TransactionState } from '../types/database.types';
+import { IQueryOptions, IPaginatedResult } from '../types/repository.types';
+import { generateUUID } from '../utils/id.utils';
+import { filterByPredicate, sortBy } from '../utils/collection.utils';
+import { promiseFromRequest } from '../utils/async.utils';
 
-export class BaseRepository<TEntity extends BaseEntity<TKey>, TKey extends IDBValidKey = string> 
+export class BaseRepository<TEntity extends BaseEntity<TKey>, TKey extends IDBValidKey = string>
   implements IRepository<TEntity, TKey> {
-  
+
   protected readonly tableName: string;
   protected readonly entityConstructor: new (data?: any) => TEntity;
 
@@ -29,63 +22,67 @@ export class BaseRepository<TEntity extends BaseEntity<TKey>, TKey extends IDBVa
     this.tableName = tableName;
   }
 
-  // ✨ CREATE Operations
+  public getDbContext(): IDbContext {
+    return this.dbContext;
+  }
+
+  // ==========================================================================
+  // ✨ CREATE OPERATIONS - Public & Internal versions
+  // ==========================================================================
+
   async create(entityData: Omit<TEntity, 'id'>): Promise<TEntity> {
+    return this.dbContext.runTransaction(this.tableName, 'readwrite', (store: IDBObjectStore) => {
+      return this._createInternal(entityData, store);
+    });
+  }
+
+  private async _createInternal(entityData: Omit<TEntity, 'id'>, store: IDBObjectStore): Promise<TEntity> {
     const entity = new this.entityConstructor(entityData);
-    
-    // Generar ID si no existe
+
     if (!entity.id) {
-      entity.id = this.generateId() as TKey;
+      entity.id = generateUUID() as TKey;
     }
 
-    const now = new Date();
-    entity.createdAt = now;
-    entity.updatedAt = now;
+    entity.touch();
 
-    // Validar antes de guardar
     const validation = entity.validate();
     if (!validation.isValid) {
       throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
     }
 
-    return this.dbContext.runTransaction(this.tableName, 'readwrite', (store: IDBObjectStore) => {
-      const request = store.add(entity.toPlainObject());
-      return new Promise<TEntity>((resolve, reject) => {
-        request.onsuccess = () => resolve(entity);
-        request.onerror = () => reject(new Error(`Failed to create entity: ${request.error?.message}`));
-      });
-    });
+    const request = store.add(entity.toPlainObject());
+    await promiseFromRequest(request);
+    
+    return entity;
   }
 
   async createMany(entitiesData: Omit<TEntity, 'id'>[]): Promise<TEntity[]> {
-    return this.executeInTransaction(async (transaction) => {
+    return this.dbContext.runTransaction(this.tableName, 'readwrite', async (store: IDBObjectStore) => {
       const entities: TEntity[] = [];
-      
+
       for (const entityData of entitiesData) {
-        const entity = await this.create(entityData);
+        const entity = await this._createInternal(entityData, store);
         entities.push(entity);
       }
-      
+
       return entities;
     });
   }
 
-  // 🔍 READ Operations
+  // ==========================================================================
+  // 🔍 READ OPERATIONS
+  // ==========================================================================
+
   async findById(id: TKey): Promise<TEntity | null> {
-    return this.dbContext.runTransaction(this.tableName, 'readonly', (store: IDBObjectStore) => {
+    return this.dbContext.runTransaction(this.tableName, 'readonly', async (store: IDBObjectStore) => {
       const request = store.get(id);
-      return new Promise<TEntity | null>((resolve, reject) => {
-        request.onsuccess = () => {
-          const result = request.result;
-          if (result) {
-            const entity = new this.entityConstructor(result);
-            resolve(entity);
-          } else {
-            resolve(null);
-          }
-        };
-        request.onerror = () => reject(new Error(`Failed to find entity: ${request.error?.message}`));
-      });
+      const result = await promiseFromRequest<any>(request);
+      
+      if (result) {
+        return new this.entityConstructor(result);
+      }
+      
+      return null;
     });
   }
 
@@ -104,27 +101,22 @@ export class BaseRepository<TEntity extends BaseEntity<TKey>, TKey extends IDBVa
           const cursor = request.result;
           if (cursor) {
             const entity = new this.entityConstructor(cursor.value);
-            
-            // Aplicar filtros
-            if (!options?.filter || this.matchesFilter(entity, options.filter)) {
+            if (!options?.filter || filterByPredicate<TEntity>([entity], options.filter)) {
               entities.push(entity);
             }
-            
             cursor.continue();
           } else {
-            // Aplicar ordenamiento
             let results = entities;
             if (options?.sortBy) {
-              results = this.applySorting(entities, options.sortBy, options.sortDirection);
+              results = sortBy<TEntity>(entities, options.sortBy, options.sortDirection);
             }
-            
-            // Aplicar paginación
+
             if (options?.offset || options?.limit) {
               const offset = options.offset || 0;
               const limit = options.limit;
               results = results.slice(offset, limit ? offset + limit : undefined);
             }
-            
+
             resolve(results);
           }
         };
@@ -138,56 +130,42 @@ export class BaseRepository<TEntity extends BaseEntity<TKey>, TKey extends IDBVa
     return this.findMany();
   }
 
-  // 📇 INDEX-based search operations (optimized for performance)
-  async findByIndex(indexName: string, value: any): Promise<TEntity[]> {
-    return this.dbContext.runTransaction(this.tableName, 'readonly', (store: IDBObjectStore) => {
-      return new Promise<TEntity[]>((resolve, reject) => {
-        try {
-          const index = store.index(indexName);
-          const request = index.getAll(value);
-          
-          request.onsuccess = () => {
-            const results = request.result.map((data: any) => 
-              new this.entityConstructor(data)
-            );
-            resolve(results);
-          };
+  // ==========================================================================
+  // 📇 INDEX-BASED SEARCH OPERATIONS
+  // ==========================================================================
 
-          request.onerror = () => reject(new Error(`Failed to find by index ${indexName}: ${request.error?.message}`));
-        } catch (error) {
-          reject(new Error(`Index ${indexName} not found in ${this.tableName}`));
-        }
-      });
+  async findByIndex(indexName: string, value: any): Promise<TEntity[]> {
+    return this.dbContext.runTransaction(this.tableName, 'readonly', async (store: IDBObjectStore) => {
+      try {
+        const index = store.index(indexName);
+        const request = index.getAll(value);
+        const results = await promiseFromRequest<any[]>(request);
+        
+        return results.map((data: any) => new this.entityConstructor(data));
+      } catch (error) {
+        throw new Error(`Index ${indexName} not found in ${this.tableName}`);
+      }
     });
   }
 
   async findOneByIndex(indexName: string, value: any): Promise<TEntity | null> {
-    return this.dbContext.runTransaction(this.tableName, 'readonly', (store: IDBObjectStore) => {
-      return new Promise<TEntity | null>((resolve, reject) => {
-        try {
-          const index = store.index(indexName);
-          const request = index.get(value);
-          
-          request.onsuccess = () => {
-            if (request.result) {
-              resolve(new this.entityConstructor(request.result));
-            } else {
-              resolve(null);
-            }
-          };
-
-          request.onerror = () => reject(new Error(`Failed to find by index ${indexName}: ${request.error?.message}`));
-        } catch (error) {
-          reject(new Error(`Index ${indexName} not found in ${this.tableName}`));
-        }
-      });
+    return this.dbContext.runTransaction(this.tableName, 'readonly', async (store: IDBObjectStore) => {
+      try {
+        const index = store.index(indexName);
+        const request = index.get(value);
+        const result = await promiseFromRequest<any>(request);
+        
+        return result ? new this.entityConstructor(result) : null;
+      } catch (error) {
+        throw new Error(`Index ${indexName} not found in ${this.tableName}`);
+      }
     });
   }
 
   async findByIndexRange(
-    indexName: string, 
-    lowerBound: any, 
-    upperBound: any, 
+    indexName: string,
+    lowerBound: any,
+    upperBound: any,
     options?: {
       lowerOpen?: boolean;
       upperOpen?: boolean;
@@ -199,7 +177,7 @@ export class BaseRepository<TEntity extends BaseEntity<TKey>, TKey extends IDBVa
         try {
           const index = store.index(indexName);
           const range = IDBKeyRange.bound(
-            lowerBound, 
+            lowerBound,
             upperBound,
             options?.lowerOpen || false,
             options?.upperOpen || false
@@ -228,14 +206,18 @@ export class BaseRepository<TEntity extends BaseEntity<TKey>, TKey extends IDBVa
     });
   }
 
+  // ==========================================================================
+  // 📊 PAGINATION
+  // ==========================================================================
+
   async findPaginated(
-    page: number, 
-    pageSize: number, 
+    page: number,
+    pageSize: number,
     options?: IQueryOptions<TEntity>
   ): Promise<IPaginatedResult<TEntity>> {
     const offset = (page - 1) * pageSize;
     const total = await this.count(options);
-    
+
     const items = await this.findMany({
       ...options,
       offset,
@@ -255,10 +237,22 @@ export class BaseRepository<TEntity extends BaseEntity<TKey>, TKey extends IDBVa
     };
   }
 
-  // 🔢 COUNT Operations
+  // ==========================================================================
+  // 🔢 COUNT OPERATIONS
+  // ==========================================================================
+
   async count(options?: IQueryOptions<TEntity>): Promise<number> {
     return this.dbContext.runTransaction(this.tableName, 'readonly', (store: IDBObjectStore) => {
       return new Promise<number>((resolve, reject) => {
+        // Si no hay filtros, usar count() optimizado
+        if (!options?.filter) {
+          const request = store.count();
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(new Error(`Failed to count entities: ${request.error?.message}`));
+          return;
+        }
+
+        // Con filtros, iterar con cursor
         let count = 0;
         const request = store.openCursor();
 
@@ -266,11 +260,11 @@ export class BaseRepository<TEntity extends BaseEntity<TKey>, TKey extends IDBVa
           const cursor = request.result;
           if (cursor) {
             const entity = new this.entityConstructor(cursor.value);
-            
-            if (!options?.filter || this.matchesFilter(entity, options.filter)) {
+
+            if (filterByPredicate<TEntity>([entity], options.filter!)) {
               count++;
             }
-            
+
             cursor.continue();
           } else {
             resolve(count);
@@ -283,16 +277,37 @@ export class BaseRepository<TEntity extends BaseEntity<TKey>, TKey extends IDBVa
   }
 
   async exists(id: TKey): Promise<boolean> {
-    const entity = await this.findById(id);
-    return entity !== null;
+    return this.dbContext.runTransaction(this.tableName, 'readonly', async (store: IDBObjectStore) => {
+      const request = store.count(id);
+      const count = await promiseFromRequest<number>(request);
+      return count > 0;
+    });
   }
 
-  // 📝 UPDATE Operations
+  // ==========================================================================
+  // 📝 UPDATE OPERATIONS - Public & Internal versions
+  // ==========================================================================
+
   async update(id: TKey, changes: Partial<TEntity>): Promise<TEntity | null> {
-    const existing = await this.findById(id);
-    if (!existing) {
+    return this.dbContext.runTransaction(this.tableName, 'readwrite', async (store: IDBObjectStore) => {
+      return this._updateInternal(id, changes, store);
+    });
+  }
+
+  private async _updateInternal(
+    id: TKey, 
+    changes: Partial<TEntity>, 
+    store: IDBObjectStore
+  ): Promise<TEntity | null> {
+
+    const getRequest = store.get(id);
+    const existingData = await promiseFromRequest<any>(getRequest);
+    
+    if (!existingData) {
       return null;
     }
+
+    const existing = new this.entityConstructor(existingData);
 
     // Aplicar cambios
     Object.assign(existing, changes);
@@ -304,135 +319,151 @@ export class BaseRepository<TEntity extends BaseEntity<TKey>, TKey extends IDBVa
       throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
     }
 
-    return this.dbContext.runTransaction(this.tableName, 'readwrite', (store: IDBObjectStore) => {
-      const request = store.put(existing.toPlainObject());
-      return new Promise<TEntity>((resolve, reject) => {
-        request.onsuccess = () => resolve(existing);
-        request.onerror = () => reject(new Error(`Failed to update entity: ${request.error?.message}`));
-      });
-    });
+    const putRequest = store.put(existing.toPlainObject());
+    await promiseFromRequest(putRequest);
+    
+    return existing;
   }
 
   async updateMany(changes: Partial<TEntity>, options?: IQueryOptions<TEntity>): Promise<number> {
     const entities = await this.findMany(options);
-    let updatedCount = 0;
+    
+    return this.dbContext.runTransaction(this.tableName, 'readwrite', async (store: IDBObjectStore) => {
+      let updatedCount = 0;
 
-    return this.executeInTransaction(async () => {
       for (const entity of entities) {
-        await this.update(entity.id!, changes);
-        updatedCount++;
+        if (entity.id) {
+          await this._updateInternal(entity.id, changes, store);
+          updatedCount++;
+        }
       }
+
       return updatedCount;
     });
   }
 
-  // 🗑️ DELETE Operations
+  // ==========================================================================
+  // 🗑️ DELETE OPERATIONS - Public & Internal versions
+  // ==========================================================================
+
   async delete(id: TKey): Promise<boolean> {
-    return this.dbContext.runTransaction(this.tableName, 'readwrite', (store: IDBObjectStore) => {
-      const request = store.delete(id);
-      return new Promise<boolean>((resolve, reject) => {
-        request.onsuccess = () => resolve(true);
-        request.onerror = () => reject(new Error(`Failed to delete entity: ${request.error?.message}`));
-      });
+    return this.dbContext.runTransaction(this.tableName, 'readwrite', async (store: IDBObjectStore) => {
+      return this._deleteInternal(id, store);
     });
+  }
+
+  private async _deleteInternal(id: TKey, store: IDBObjectStore): Promise<boolean> {
+    const request = store.delete(id);
+    await promiseFromRequest(request);
+    return true;
   }
 
   async deleteMany(options?: IQueryOptions<TEntity>): Promise<number> {
     const entities = await this.findMany(options);
-    let deletedCount = 0;
+    
+    return this.dbContext.runTransaction(this.tableName, 'readwrite', async (store: IDBObjectStore) => {
+      let deletedCount = 0;
 
-    return this.executeInTransaction(async () => {
       for (const entity of entities) {
-        if (entity.id && await this.delete(entity.id)) {
+        if (entity.id) {
+          await this._deleteInternal(entity.id, store);
           deletedCount++;
         }
       }
+
       return deletedCount;
     });
   }
 
-  /**
-   * Clears all records from the object store efficiently using IndexedDB's clear() method
-   * @returns Promise that resolves when all records are cleared
-   */
   async clearAll(): Promise<void> {
-    return this.dbContext.runTransaction(this.tableName, 'readwrite', (store: IDBObjectStore) => {
+    return this.dbContext.runTransaction(this.tableName, 'readwrite', async (store: IDBObjectStore) => {
       const request = store.clear();
-      return new Promise<void>((resolve, reject) => {
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(new Error(`Failed to clear object store: ${request.error?.message}`));
-      });
+      await promiseFromRequest(request);
     });
   }
 
-  // 💾 SAVE Operations
+  // ==========================================================================
+  // 💾 SAVE OPERATIONS
+  // ==========================================================================
+
   async save(entity: TEntity): Promise<TEntity> {
-    if (entity.id && await this.exists(entity.id)) {
-      return (await this.update(entity.id, entity))!;
-    } else {
-      return await this.create(entity);
-    }
+    return this.dbContext.runTransaction(this.tableName, 'readwrite', async (store: IDBObjectStore) => {
+      if (entity.id) {
+        // Verificar si existe
+        const countRequest = store.count(entity.id);
+        const count = await promiseFromRequest<number>(countRequest);
+        
+        if (count > 0) {
+          return (await this._updateInternal(entity.id, entity, store))!;
+        }
+      }
+
+      return await this._createInternal(entity, store);
+    });
   }
 
   async saveMany(entities: TEntity[]): Promise<TEntity[]> {
-    return this.executeInTransaction(async () => {
+    return this.dbContext.runTransaction(this.tableName, 'readwrite', async (store: IDBObjectStore) => {
       const results: TEntity[] = [];
+      
       for (const entity of entities) {
-        results.push(await this.save(entity));
+        if (entity.id) {
+          const countRequest = store.count(entity.id);
+          const count = await promiseFromRequest<number>(countRequest);
+          
+          if (count > 0) {
+            const updated = await this._updateInternal(entity.id, entity, store);
+            results.push(updated!);
+          } else {
+            const created = await this._createInternal(entity, store);
+            results.push(created);
+          }
+        } else {
+          const created = await this._createInternal(entity, store);
+          results.push(created);
+        }
       }
+      
       return results;
     });
   }
 
-  // 🔄 TRANSACTION Operations
+  // ==========================================================================
+  // 🔄 TRANSACTION OPERATIONS
+  // ==========================================================================
+
+  /**
+   * Executes a custom operation within a transaction
+   * Note: Use this for complex multi-step operations that need atomicity
+   */
   async executeInTransaction<TResult>(
     operation: (transaction: ITransactionContext) => Promise<TResult>
   ): Promise<TResult> {
-    // Implementación básica - en una implementación real, usarías el contexto de transacción
-    // Por ahora, ejecutamos la operación directamente
-    const fakeTransaction: ITransactionContext = {
-      id: crypto.randomUUID(),
-      storeName: this.tableName,
-      mode: 'readwrite',
-      state: TransactionState.ACTIVE,
-      startTime: new Date()
-    };
-    
-    return operation(fakeTransaction);
-  }
+    return this.dbContext.runTransaction<TResult>(
+      this.tableName,
+      'readwrite',
+      async (store: IDBObjectStore) => {
+        const idbTransaction = store.transaction;
 
-  // 🛠️ UTILITY Methods
-  protected generateId(): string {
-    return crypto.randomUUID();
-  }
+        const transactionContext: ITransactionContext = {
+          id: generateUUID(),
+          storeName: this.tableName,
+          mode: 'readwrite',
+          state: TransactionState.ACTIVE,
+          startTime: new Date()
+        };
 
-  protected matchesFilter(entity: TEntity, filter: Partial<TEntity> | ((item: TEntity) => boolean)): boolean {
-    if (typeof filter === 'function') {
-      return filter(entity);
-    }
-
-    // Filtro por propiedades
-    for (const [key, value] of Object.entries(filter)) {
-      if ((entity as any)[key] !== value) {
-        return false;
+        try {
+          const result = await operation(transactionContext);
+          transactionContext.state = TransactionState.COMPLETED;
+          transactionContext.endTime = new Date();
+          return result;
+        } catch (error) {
+          transactionContext.state = TransactionState.ERROR;
+          transactionContext.endTime = new Date();
+          throw error;
+        }
       }
-    }
-
-    return true;
-  }
-
-  protected applySorting(
-    entities: TEntity[], 
-    sortBy: keyof TEntity, 
-    direction: 'asc' | 'desc' = 'asc'
-  ): TEntity[] {
-    return entities.sort((a, b) => {
-      const aValue = a[sortBy];
-      const bValue = b[sortBy];
-
-      if (aValue < bValue) return direction === 'asc' ? -1 : 1;
-      if (aValue > bValue) return direction === 'asc' ? 1 : -1;
-      return 0;
-    });
+    );
   }
 }

@@ -5,10 +5,11 @@
  */
 
 import { BaseRepository } from './BaseRepository';
-import { BaseEntity } from '../models/BaseEntity';
+import { BaseEntity } from '../entities/base/BaseEntity';
 import { DbContext } from '../context/DbContext';
 import { IDbContext } from '../context/IDbContext';
 import { IDbConfig } from '../types/database.types';
+import { delay } from '../utils/async.utils';
 
 // ========== TEST ENTITY ==========
 
@@ -544,7 +545,7 @@ describe('BaseRepository', () => {
       const originalUpdatedAt = user.updatedAt;
 
       // Esperar un momento para asegurar diferencia de timestamp
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await delay(10);
 
       const updated = await repository.update(user.id!, { age: 31 });
 

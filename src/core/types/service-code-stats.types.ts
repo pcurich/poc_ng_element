@@ -1,25 +1,26 @@
-/**
- * 📊 Service Code Statistics Interface
- * 
- * Interface for service code statistics used across the ORM system
- */
+import { IDbConfig } from "./database.types";
+import { HttpMethod } from "./http-mock.types";
 
-/**
- * Interface representing a Service Code with its statistics
- */
 export interface ServiceCodeWithStats {
-  /** Unique hash ID for the service code */
-  id: string;
-  
-  /** Service code identifier */
-  serviceCode: string;
-  
-  /** Total number of mocks associated with this service code */
+  id: string;  
+  serviceCode: string;  
   mockCount: number;
-  
-  /** List of HTTP methods used by mocks of this service */
   methods: string[];
-  
-  /** Last update timestamp */
   lastUpdated?: Date;
+}
+
+export interface DatabaseStatus {
+  exists: boolean;
+  isInitialized: boolean;
+  config?: IDbConfig;
+  error?: string;
+}
+
+export interface IHttpMockStatistics {
+  totalMocks: number;
+  mocksByServiceCode: Record<string, number>;
+  mocksByMethod: Record<HttpMethod | string, number>;
+  mocksByStatusCode: Record<number, number>;
+  averageDelayMs: number;
+  mostUsedServiceCodes: Array<{ serviceCode: string; count: number }>;
 }

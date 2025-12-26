@@ -1,5 +1,8 @@
 import { IDbContext } from './IDbContext';
-import { IDbConfig, TransactionState, ITransactionContext } from '../types/database.types';
+import { IDbConfig, TransactionState, ITransactionContext, ITransactionStats } from '../types/database.types';
+import { generateTransactionId } from '../utils/id.utils';
+import { getCurrentTimestamp } from '../utils/date.utils';
+import { delay, promiseFromRequest } from '../utils/async.utils';
 
 /**
  * 🗄️ DbContext - Implementación concreta de IDbContext
@@ -24,9 +27,6 @@ export class DbContext implements IDbContext {
     this.validateConfig();
   }
 
-  /**
-   * Valida la configuración de la base de datos
-   */
   private validateConfig(): void {
     if (!this.config.name || this.config.name.trim().length === 0) {
       throw new Error('Database name is required');
@@ -52,7 +52,7 @@ export class DbContext implements IDbContext {
 
         try {
           this.handleUpgrade(db, oldVersion, newVersion);
-          
+
           // Ejecutar migraciones personalizadas
           if (this.config.migrations) {
             for (const migration of this.config.migrations) {
@@ -68,11 +68,11 @@ export class DbContext implements IDbContext {
       request.onsuccess = () => {
         this.dbInstance = request.result;
         this.isConnectionOpen = true;
-        
+
         // Manejar cambios de versión cuando la DB está abierta
         this.dbInstance.onversionchange = () => {
           console.warn('⚠️ Database version changed, closing connection');
-          this.close();
+          this.safeClose();
         };
 
         // Manejar errores no controlados
@@ -98,9 +98,6 @@ export class DbContext implements IDbContext {
     return this.dbPromise;
   }
 
-  /**
-   * Maneja la actualización/creación de la estructura de la DB
-   */
   private handleUpgrade(db: IDBDatabase, oldVersion: number, newVersion: number): void {
     console.log(`🔄 Upgrading database from v${oldVersion} to v${newVersion}`);
 
@@ -108,14 +105,14 @@ export class DbContext implements IDbContext {
     for (const storeConfig of this.config.objectStores) {
       if (!db.objectStoreNames.contains(storeConfig.name)) {
         const store = db.createObjectStore(storeConfig.name, storeConfig.options);
-        
+
         // Crear índices si están definidos
         if (storeConfig.indexes) {
           for (const indexConfig of storeConfig.indexes) {
             store.createIndex(indexConfig.name, indexConfig.keyPath, indexConfig.options);
           }
         }
-        
+
         console.log(`📁 Created object store: ${storeConfig.name}`);
       }
     }
@@ -130,24 +127,20 @@ export class DbContext implements IDbContext {
       }
     }
     if (this.dbInstance && this.isConnectionOpen) return this.dbInstance;
-    
+
     // Caso edge - debería ser muy raro
     throw new Error('Database instance not available');
   }
 
-  async runTransaction<T>(
-    storeName: string,
-    mode: IDBTransactionMode,
-    fn: (store: IDBObjectStore) => IDBRequest | Promise<any> | void
-  ): Promise<T> {
+  async runTransaction<T>(storeName: string, mode: IDBTransactionMode, fn: (store: IDBObjectStore) => IDBRequest | Promise<any> | void): Promise<T> {
     const db = await this.getDB();
-    
+
     // Verificar que el store existe
     if (!db.objectStoreNames.contains(storeName)) {
       throw new Error(`Object store "${storeName}" does not exist`);
     }
 
-    const transactionId = this.generateTransactionId();
+    const transactionId = generateTransactionId();
     const transactionContext: ITransactionContext = {
       id: transactionId,
       storeName,
@@ -161,7 +154,7 @@ export class DbContext implements IDbContext {
     try {
       const transaction = db.transaction(storeName, mode);
       const store = transaction.objectStore(storeName);
-      
+
       transactionContext.state = TransactionState.ACTIVE;
 
       // Configurar event listeners para la transacción
@@ -191,7 +184,7 @@ export class DbContext implements IDbContext {
       // Manejar diferentes tipos de resultado
       if (operationResult instanceof IDBRequest || (operationResult && typeof (operationResult as any).onsuccess === 'function')) {
         // Es un IDBRequest
-        const requestPromise = this.promiseFromRequest(operationResult as IDBRequest);
+        const requestPromise = promiseFromRequest(operationResult as IDBRequest);
         const [result] = await Promise.all([requestPromise, transactionPromise]);
         return result as T;
       }
@@ -216,22 +209,8 @@ export class DbContext implements IDbContext {
     }
   }
 
-  /**
-   * Convierte un IDBRequest en una Promise
-   */
-  private promiseFromRequest<T = any>(request: IDBRequest): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error || new Error('IndexedDB request failed'));
-    });
-  }
 
-  /**
-   * Genera un ID único para transacciones
-   */
-  private generateTransactionId(): string {
-    return `tx_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
-  }
+
 
   getDatabaseName(): string {
     return this.config.name;
@@ -242,6 +221,7 @@ export class DbContext implements IDbContext {
   }
 
   async close(): Promise<void> {
+
     if (this.dbInstance && this.isConnectionOpen) {
       // Esperar que terminen las transacciones activas
       if (this.activeTransactions.size > 0) {
@@ -253,8 +233,31 @@ export class DbContext implements IDbContext {
       this.isConnectionOpen = false;
       this.dbPromise = null;
       this.activeTransactions.clear();
-      
+
       console.log(`🔒 Database "${this.config.name}" closed`);
+    }
+  }
+
+  async safeClose(): Promise<void> {
+    const stats = this.getTransactionStats();
+
+    if (stats.active > 0) {
+      console.warn(`⚠️ Waiting for ${stats.active} active transactions...`);
+
+      // Esperar hasta que terminen
+      await this.waitForTransactions();
+    }
+
+    await this.close();
+  }
+
+  private async waitForTransactions(maxWaitMs = 5000): Promise<void> {
+    const start = getCurrentTimestamp();
+    while (this.getTransactionStats().active > 0) {
+      if (getCurrentTimestamp() - start > maxWaitMs) {
+        throw new Error('Timeout waiting for transactions');
+      }
+      await delay(100);
     }
   }
 
@@ -265,7 +268,7 @@ export class DbContext implements IDbContext {
   /**
    * Obtiene estadísticas de transacciones activas (útil para debugging)
    */
-  getTransactionStats(): { active: number; states: Record<TransactionState, number> } {
+  getTransactionStats(): ITransactionStats {
     const states = {
       [TransactionState.PENDING]: 0,
       [TransactionState.ACTIVE]: 0,

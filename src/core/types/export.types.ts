@@ -5,13 +5,13 @@
  * Define la estructura de los archivos JSON exportados por el sistema.
  */
 
-import { IHttpMockData } from '../models/HttpMockEntity';
-import { DatabaseConfig } from '../../app/components/interfaces';
+import { IHttpMockData } from '../types/http-mock.types';
+import { IDbConfig } from '../types/database.types';
 
 /**
  * Tipo de exportación
  */
-export type ExportType = 'mocks' | 'complete-database';
+export type ExportType = 'mocks' | 'complete-database' | 'manual-config' | 'unknown';
 
 /**
  * Estructura base para datos exportados con firma digital
@@ -79,7 +79,7 @@ export interface ExportMocksData extends ExportDataBase {
 export interface ExportDatabaseData extends ExportDataBase {
   type: 'complete-database';
   /** Configuración de la base de datos */
-  databaseConfig: DatabaseConfig;
+  databaseConfig: IDbConfig;
   /** Número total de mocks exportados */
   totalMocks: number;
   /** Array de mocks HTTP */
@@ -126,7 +126,7 @@ export interface CreateExportOptions {
   /** Mocks a exportar */
   mocks: IHttpMockData[];
   /** Configuración de base de datos (solo para complete-database) */
-  databaseConfig?: DatabaseConfig;
+  databaseConfig?: IDbConfig;
 }
 
 /**
@@ -136,7 +136,7 @@ export interface ImportResult {
   /** Indica si la importación fue exitosa */
   success: boolean;
   /** Tipo de archivo importado */
-  type: ExportType | 'manual-config';
+  type: ExportType;
   /** Número de mocks importados */
   mocksImported: number;
   /** Mensaje de resultado */

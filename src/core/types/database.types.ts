@@ -47,25 +47,6 @@ export interface IDbOperationResult<T = any> {
 }
 
 /**
- * Opciones para queries
- */
-export interface IQueryOptions {
-  limit?: number;
-  offset?: number;
-  orderBy?: string;
-  direction?: 'next' | 'prev';
-}
-
-/**
- * Filtro para consultas
- */
-export interface IQueryFilter {
-  field: string;
-  operator: 'equals' | 'greater' | 'less' | 'between' | 'includes';
-  value: any;
-}
-
-/**
  * Estados posibles de una transacción
  */
 export enum TransactionState {
@@ -74,6 +55,14 @@ export enum TransactionState {
   COMPLETED = 'completed',
   ABORTED = 'aborted',
   ERROR = 'error'
+}
+
+/**
+ * Estadísticas de transacciones activas
+ */
+export interface ITransactionStats {
+  active: number;
+  states: Record<TransactionState, number>;
 }
 
 /**

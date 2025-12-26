@@ -1,26 +1,22 @@
 <div class="app-container">
-  <h2>🚀 Angular Elements - POC con Angular 20</h2>
-  <p>Demostración de Custom Elements usando las últimas características de Angular</p>
-  <div class="features">
-    <h3>🎯 Características Implementadas:</h3>
-    <ul>
-      <li>✅ Angular 20.3+ con Application Builder</li>
-      <li>✅ Zoneless Change Detection</li>
-      <li>✅ Angular Signals para reactividad</li>
-      <li>✅ Standalone Components</li>
-      <li>✅ SCSS con variables y mixins</li>
-      <li>✅ Custom Elements (Web Components)</li>
-      <li>✅ TypeScript 5.9+ optimizado</li>
-    </ul>
-  </div>
+  <header class="app-header">
+    <nav class="app-nav">
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+        🏠 Home
+      </a>
+      <a routerLink="/admin/debug/monitor" routerLinkActive="active">
+        📊 DB Monitor
+      </a>
+      <a routerLink="/admin/debug/repository-tester" routerLinkActive="active">
+        🧪 Repository Tester
+      </a>
+      <a routerLink="/admin/debug/service-tester" routerLinkActive="active">
+        🔧 Service Tester
+      </a>
+    </nav>
+  </header>
   
-<http-mock-manager
-  serviceCode="demo-service"
-  nameMock="Demo Mock"
-  url="https://api.example.com/users"
-  httpMethod="GET"
-  [delayMs]="1000"
-  responseBody='{"message": "Hello from HTTP Mock!"}'
-  (saveMockSchemaEvent)="onMockSchemaSaved($event)"
-  (contextTypeChangeEvent)="onContextChanged($event)">
-</http-mock-manager>
+  <main class="app-content">
+    <router-outlet></router-outlet>
+  </main>
+</div>

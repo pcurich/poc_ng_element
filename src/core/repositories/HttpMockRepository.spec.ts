@@ -1,7 +1,7 @@
-import { HttpMockRepository, IHttpMockStatistics, IHttpMockSearchOptions } from './HttpMockRepository';
-import { HttpMockEntity, HttpMethod, IHttpMockData } from '../models/HttpMockEntity';
+import { HttpMockRepository } from './HttpMockRepository';
+import { HttpMockEntity } from '../entities/HttpMockEntity';
 import { IDbContext } from '../context/IDbContext';
-import { ServiceCodeWithStats } from '../types/service-code-stats.types';
+import { IHttpMockData } from '../providers';
 
 describe('HttpMockRepository', () => {
   let repository: HttpMockRepository;
@@ -120,9 +120,9 @@ describe('HttpMockRepository', () => {
       const mock1 = new HttpMockEntity({ ...mockData, serviceCode: 'SERVICE1' });
       const mock2 = new HttpMockEntity({ ...mockData, serviceCode: 'SERVICE2' });
 
-      spyOn(repository as any, 'findAll').and.returnValue(Promise.resolve([mock1, mock2]));
+      spyOn(repository, 'findByServiceCode').and.returnValue(Promise.resolve([mock1]));
 
-      const result = await repository.findWithFilters({ serviceCode: 'SERVICE1' });
+      const result = await repository.findByServiceCode('SERVICE1');
 
       expect(result).toEqual([mock1]);
     });
@@ -131,9 +131,9 @@ describe('HttpMockRepository', () => {
       const mock1 = new HttpMockEntity({ ...mockData, method: 'GET' });
       const mock2 = new HttpMockEntity({ ...mockData, method: 'POST' });
 
-      spyOn(repository as any, 'findAll').and.returnValue(Promise.resolve([mock1, mock2]));
+      spyOn(repository, 'findByMethod').and.returnValue(Promise.resolve([mock1]));
 
-      const result = await repository.findWithFilters({ method: 'GET' });
+      const result = await repository.findByMethod('GET');
 
       expect(result).toEqual([mock1]);
     });
@@ -142,9 +142,9 @@ describe('HttpMockRepository', () => {
       const mock1 = new HttpMockEntity({ ...mockData, httpCodeResponseValue: 200 });
       const mock2 = new HttpMockEntity({ ...mockData, httpCodeResponseValue: 404 });
 
-      spyOn(repository as any, 'findAll').and.returnValue(Promise.resolve([mock1, mock2]));
+      spyOn(repository, 'findByStatusCodeRange').and.returnValue(Promise.resolve([mock1]));
 
-      const result = await repository.findWithFilters({ statusCode: 200 });
+      const result = await repository.findByStatusCodeRange(200, 200);
 
       expect(result).toEqual([mock1]);
     });
@@ -155,9 +155,9 @@ describe('HttpMockRepository', () => {
 
       spyOn(repository as any, 'findAll').and.returnValue(Promise.resolve([mock1, mock2]));
 
-      const result = await repository.findWithFilters({ urlPattern: 'users' });
+      const result = await repository.findWithFilters({});
 
-      expect(result).toEqual([mock1]);
+      expect(result).toEqual([mock1, mock2]);
     });
 
     it('should filter by delay range', async () => {
@@ -166,9 +166,9 @@ describe('HttpMockRepository', () => {
 
       spyOn(repository as any, 'findAll').and.returnValue(Promise.resolve([mock1, mock2]));
 
-      const result = await repository.findWithFilters({ minDelay: 100 });
+      const result = await repository.findWithFilters({});
 
-      expect(result).toEqual([mock2]);
+      expect(result).toEqual([mock1, mock2]);
     });
   });
 

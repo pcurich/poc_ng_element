@@ -1,0 +1,393 @@
+<div class="repository-tester">
+  <!-- Header -->
+  <header class="tester-header">
+    <h2>🧪 Repository Tester</h2>
+    <div class="header-stats">
+      <div class="stat">
+        <span class="stat-label">Success Rate</span>
+        <span class="stat-value" [class.success]="successRate() > 80" [class.warning]="successRate() <= 80 && successRate() > 50" [class.error]="successRate() <= 50">
+          {{ successRate() }}%
+        </span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Avg Duration</span>
+        <span class="stat-value">{{ averageDuration() }}ms</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Total Tests</span>
+        <span class="stat-value">{{ testResults().length }}</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Initialization Guard -->
+  <div *ngIf="!isInitialized()" class="loading-container">
+    <div class="spinner"></div>
+    <p>Initializing repository...</p>
+  </div>
+
+  <!-- Main Content -->
+  <div *ngIf="isInitialized()" class="tester-content">
+    
+    <!-- Tab Navigation -->
+    <nav class="tabs">
+      <button
+        *ngFor="let tab of tabs"
+        class="tab"
+        [class.active]="activeTab() === tab.id"
+        (click)="selectTab(tab.id)"
+        [disabled]="isLoading()">
+        <span class="tab-icon">{{ tab.icon }}</span>
+        <span class="tab-label">{{ tab.label }}</span>
+      </button>
+      
+      <!-- Results Toggle Button -->
+      <button class="tab results-toggle" (click)="toggleResults()" [class.active]="showResults()">
+        <span class="tab-icon">📋</span>
+        <span class="tab-label">Results ({{ testResults().length }})</span>
+      </button>
+    </nav>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+      
+      <!-- CREATE TAB -->
+      <div *ngIf="activeTab() === 'create'" class="tab-panel">
+        <h3>Create Operations</h3>
+        
+        <div class="test-section">
+          <h4>Single Create</h4>
+          <form class="test-form" (ngSubmit)="testCreate()">
+            <div class="form-row">
+              <label>Service Code</label>
+              <input type="text" [(ngModel)]="createForm.serviceCode" name="serviceCode" required />
+            </div>
+            <div class="form-row">
+              <label>URL</label>
+              <input type="text" [(ngModel)]="createForm.url" name="url" required />
+            </div>
+            <div class="form-row">
+              <label>Method</label>
+              <select [(ngModel)]="createForm.method" name="method">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="DELETE">DELETE</option>
+                <option value="PATCH">PATCH</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>HTTP Code</label>
+              <input type="number" [(ngModel)]="createForm.httpCodeResponseValue" name="httpCode" />
+            </div>
+            <div class="form-row">
+              <label>Delay (ms)</label>
+              <input type="number" [(ngModel)]="createForm.delayMs" name="delay" />
+            </div>
+            <div class="form-row">
+              <label>Response Body</label>
+              <textarea [(ngModel)]="createForm.responseBody" name="responseBody" rows="3"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary" [disabled]="isLoading()">
+              Create Entity
+            </button>
+          </form>
+        </div>
+
+        <div class="test-section">
+          <h4>Batch Create</h4>
+          <form class="test-form" (ngSubmit)="testCreateMany()">
+            <div class="form-row">
+              <label>Number of entities</label>
+              <input type="number" [(ngModel)]="batchCreateCount" name="batchCount" min="1" max="100" />
+            </div>
+            <button type="submit" class="btn btn-primary" [disabled]="isLoading()">
+              Create {{ batchCreateCount }} Entities
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- READ TAB -->
+      <div *ngIf="activeTab() === 'read'" class="tab-panel">
+        <h3>Read Operations</h3>
+        
+        <div class="test-section">
+          <h4>Find By ID</h4>
+          <form class="test-form" (ngSubmit)="testFindById()">
+            <div class="form-row">
+              <label>Entity ID</label>
+              <input type="text" [(ngModel)]="searchId" name="searchId" placeholder="Enter entity ID" required />
+            </div>
+            <button type="submit" class="btn btn-primary" [disabled]="isLoading()">
+              Find By ID
+            </button>
+          </form>
+        </div>
+
+        <div class="test-section">
+          <h4>Find All</h4>
+          <button class="btn btn-primary" (click)="testFindAll()" [disabled]="isLoading()">
+            Get All Entities
+          </button>
+        </div>
+
+        <div class="test-section">
+          <h4>Find By Index</h4>
+          <form class="test-form" (ngSubmit)="testFindByIndex()">
+            <div class="form-row">
+              <label>Service Code</label>
+              <input type="text" [(ngModel)]="searchServiceCode" name="searchServiceCode" placeholder="Enter service code" required />
+            </div>
+            <button type="submit" class="btn btn-primary" [disabled]="isLoading()">
+              Find By Service Code
+            </button>
+          </form>
+        </div>
+
+        <div class="test-section">
+          <h4>Exists Check</h4>
+          <form class="test-form" (ngSubmit)="testExists()">
+            <div class="form-row">
+              <label>Entity ID</label>
+              <input type="text" [(ngModel)]="searchId" name="existsId" placeholder="Enter entity ID" required />
+            </div>
+            <button type="submit" class="btn btn-primary" [disabled]="isLoading()">
+              Check Exists
+            </button>
+          </form>
+        </div>
+
+        <div class="test-section">
+          <h4>Count</h4>
+          <button class="btn btn-primary" (click)="testCount()" [disabled]="isLoading()">
+            Count Entities
+          </button>
+        </div>
+      </div>
+
+      <!-- UPDATE TAB -->
+      <div *ngIf="activeTab() === 'update'" class="tab-panel">
+        <h3>Update Operations</h3>
+        
+        <div class="test-section">
+          <h4>Single Update</h4>
+          <form class="test-form" (ngSubmit)="testUpdate()">
+            <div class="form-row">
+              <label>Entity ID</label>
+              <input type="text" [(ngModel)]="updateId" name="updateId" placeholder="Enter entity ID" required />
+            </div>
+            <div class="form-row">
+              <label>New Delay (ms)</label>
+              <input type="number" [(ngModel)]="updateDelay" name="updateDelay" />
+            </div>
+            <button type="submit" class="btn btn-primary" [disabled]="isLoading()">
+              Update Entity
+            </button>
+          </form>
+        </div>
+
+        <div class="test-section">
+          <h4>Batch Update</h4>
+          <p class="info-text">Updates all entities with serviceCode starting with "BATCH_" to delay 500ms</p>
+          <button class="btn btn-primary" (click)="testUpdateMany()" [disabled]="isLoading()">
+            Update Batch Entities
+          </button>
+        </div>
+      </div>
+
+      <!-- DELETE TAB -->
+      <div *ngIf="activeTab() === 'delete'" class="tab-panel">
+        <h3>Delete Operations</h3>
+        
+        <div class="test-section">
+          <h4>Single Delete</h4>
+          <form class="test-form" (ngSubmit)="testDelete()">
+            <div class="form-row">
+              <label>Entity ID</label>
+              <input type="text" [(ngModel)]="updateId" name="deleteId" placeholder="Enter entity ID" required />
+            </div>
+            <button type="submit" class="btn btn-danger" [disabled]="isLoading()">
+              Delete Entity
+            </button>
+          </form>
+        </div>
+
+        <div class="test-section">
+          <h4>Batch Delete</h4>
+          <p class="info-text">Deletes all entities with serviceCode starting with "BATCH_"</p>
+          <button class="btn btn-danger" (click)="testDeleteMany()" [disabled]="isLoading()">
+            Delete Batch Entities
+          </button>
+        </div>
+
+        <div class="test-section">
+          <h4>Clear All</h4>
+          <p class="warning-text">⚠️ This will delete ALL data from the database!</p>
+          <button class="btn btn-danger" (click)="testClearAll()" [disabled]="isLoading()">
+            Clear All Data
+          </button>
+        </div>
+      </div>
+
+      <!-- BATCH TAB -->
+      <div *ngIf="activeTab() === 'batch'" class="tab-panel">
+        <h3>Batch Operations</h3>
+        
+        <div class="test-section">
+          <h4>Save (Insert or Update)</h4>
+          <button class="btn btn-primary" (click)="testSave()" [disabled]="isLoading()">
+            Test Save Single
+          </button>
+        </div>
+
+        <div class="test-section">
+          <h4>Save Many</h4>
+          <p class="info-text">Creates/updates multiple entities in a single transaction</p>
+          <button class="btn btn-primary" (click)="testSaveMany()" [disabled]="isLoading()">
+            Test Save Many
+          </button>
+        </div>
+      </div>
+
+      <!-- QUERY TAB -->
+      <div *ngIf="activeTab() === 'query'" class="tab-panel">
+        <h3>Query Operations</h3>
+        
+        <div class="test-section">
+          <h4>Find Many with Options</h4>
+          <form class="test-form" (ngSubmit)="testFindMany()">
+            <div class="form-row">
+              <label>Service Code Filter (optional)</label>
+              <input type="text" [(ngModel)]="queryServiceCode" name="queryServiceCode" placeholder="Leave empty for no filter" />
+            </div>
+            <div class="form-row">
+              <label>Sort By</label>
+              <select [(ngModel)]="querySortBy" name="querySortBy">
+                <option value="serviceCode">Service Code</option>
+                <option value="delayMs">Delay</option>
+                <option value="createdAt">Created At</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>Sort Direction</label>
+              <select [(ngModel)]="querySortDirection" name="querySortDirection">
+                <option value="asc">Ascending</option>
+                <option value="desc">Descending</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>Limit</label>
+              <input type="number" [(ngModel)]="queryLimit" name="queryLimit" min="1" max="100" />
+            </div>
+            <div class="form-row">
+              <label>Offset</label>
+              <input type="number" [(ngModel)]="queryOffset" name="queryOffset" min="0" />
+            </div>
+            <button type="submit" class="btn btn-primary" [disabled]="isLoading()">
+              Execute Query
+            </button>
+          </form>
+        </div>
+
+        <div class="test-section">
+          <h4>Paginated Query</h4>
+          <form class="test-form" (ngSubmit)="testFindPaginated()">
+            <div class="form-row">
+              <label>Page Number</label>
+              <input type="number" [(ngModel)]="currentPage" name="currentPage" min="1" />
+            </div>
+            <div class="form-row">
+              <label>Page Size</label>
+              <input type="number" [(ngModel)]="pageSize" name="pageSize" min="1" max="50" />
+            </div>
+            <button type="submit" class="btn btn-primary" [disabled]="isLoading()">
+              Get Page
+            </button>
+          </form>
+        </div>
+
+        <div class="test-section">
+          <h4>Complex Query</h4>
+          <p class="info-text">Finds entities with delay ≥ 100ms AND HTTP 200, sorted by delay descending</p>
+          <button class="btn btn-primary" (click)="testComplexQuery()" [disabled]="isLoading()">
+            Execute Complex Query
+          </button>
+        </div>
+      </div>
+
+      <!-- TRANSACTION TAB -->
+      <div *ngIf="activeTab() === 'transaction'" class="tab-panel">
+        <h3>Transaction Operations</h3>
+        
+        <div class="test-section">
+          <h4>Atomic Transaction</h4>
+          <p class="info-text">Creates 3 entities in a single atomic transaction</p>
+          <button class="btn btn-primary" (click)="testTransaction()" [disabled]="isLoading()">
+            Test Transaction
+          </button>
+        </div>
+
+        <div class="test-section">
+          <h4>Transaction Rollback</h4>
+          <p class="info-text">Attempts to create entity then throws error to verify rollback</p>
+          <button class="btn btn-primary" (click)="testTransactionRollback()" [disabled]="isLoading()">
+            Test Rollback
+          </button>
+        </div>
+      </div>
+
+    </div>
+    
+    <!-- Results Panel (Collapsible Sidebar) -->
+    <aside class="results-panel" [class.collapsed]="!showResults()">
+      <div class="results-header">
+        <h3>Test Results</h3>
+        <div class="results-actions">
+          <button class="btn btn-sm" (click)="clearResults()" [disabled]="testResults().length === 0">
+            Clear
+          </button>
+          <button class="btn btn-sm" (click)="exportResults()" [disabled]="testResults().length === 0">
+            Export
+          </button>
+          <button class="btn btn-sm btn-close" (click)="toggleResults()" title="Close">
+            ✕
+          </button>
+        </div>
+      </div>
+
+      <div class="results-list">
+        <div *ngIf="testResults().length === 0" class="empty-state">
+          No test results yet. Run a test to see results here.
+        </div>
+
+        <div *ngFor="let result of recentResults()" class="result-card" [class.success]="result.success" [class.error]="!result.success">
+          <div class="result-header">
+            <span class="result-icon">{{ result.success ? '✅' : '❌' }}</span>
+            <span class="result-method">{{ result.method }}</span>
+            <span class="result-duration">{{ result.duration }}ms</span>
+          </div>
+          
+          <div class="result-body">
+            <div *ngIf="result.success && result.data" class="result-data">
+              <pre>{{ result.data | json }}</pre>
+            </div>
+            <div *ngIf="!result.success && result.error" class="result-error">
+              <strong>Error:</strong> {{ result.error }}
+            </div>
+          </div>
+          
+          <div class="result-footer">
+            <small>{{ result.timestamp | date:'medium' }}</small>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div *ngIf="isLoading()" class="loading-overlay">
+    <div class="spinner"></div>
+    <p>Running test...</p>
+  </div>
+</div>

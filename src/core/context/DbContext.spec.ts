@@ -1,5 +1,6 @@
 import { DbContext } from './DbContext';
 import { IDbConfig, TransactionState } from '../types/database.types';
+import { delay } from '../utils/async.utils';
 
 describe('DbContext', () => {
   let config: IDbConfig;
@@ -55,27 +56,23 @@ describe('DbContext', () => {
     spyOnProperty(window, 'indexedDB', 'get').and.returnValue(mockIndexedDB);
   });
 
-  afterEach(() => {
-    // No need to delete since we're using spyOnProperty
-  });
-
   describe('constructor', () => {
-    it('should create instance with valid config', () => {
+    it('#Should create instance with valid config', () => {
       const instance = new DbContext(config);
       expect(instance).toBeDefined();
     });
 
-    it('should throw error for empty database name', () => {
+    it('#Should throw error for empty database name', () => {
       const invalidConfig = { ...config, name: '' };
       expect(() => new DbContext(invalidConfig)).toThrowError('Database name is required');
     });
 
-    it('should throw error for version less than 1', () => {
+    it('#Should throw error for version less than 1', () => {
       const invalidConfig = { ...config, version: 0 };
       expect(() => new DbContext(invalidConfig)).toThrowError('Database version must be >= 1');
     });
 
-    it('should throw error for empty object stores', () => {
+    it('#Should throw error for empty object stores', () => {
       const invalidConfig = { ...config, objectStores: [] };
       expect(() => new DbContext(invalidConfig)).toThrowError('At least one object store must be defined');
     });
@@ -86,7 +83,7 @@ describe('DbContext', () => {
       mockIndexedDB.open.and.returnValue(mockRequest);
     });
 
-    it('should open database successfully', async () => {
+    it('#Should open database successfully', async () => {
       mockRequest.onsuccess = jasmine.createSpy('onsuccess');
       const instance = new DbContext(config);
       const openPromise = instance.open();
@@ -96,7 +93,7 @@ describe('DbContext', () => {
       expect(instance.isOpen()).toBe(true);
     });
 
-    it('should handle database upgrade', async () => {
+    it('#Should handle database upgrade', async () => {
       mockDB.objectStoreNames.contains.and.returnValue(false); // Store doesn't exist yet
       mockRequest.onupgradeneeded = jasmine.createSpy('onupgradeneeded');
       mockRequest.onsuccess = jasmine.createSpy('onsuccess');
@@ -111,7 +108,7 @@ describe('DbContext', () => {
       expect(mockDB.createObjectStore).toHaveBeenCalledWith('testStore', { keyPath: 'id' });
     });
 
-    it('should reject on database open error', async () => {
+    it('#Should reject on database open error', async () => {
       mockRequest.error = new Error('Open failed');
       mockRequest.onerror = jasmine.createSpy('onerror');
       const instance = new DbContext(config);
@@ -121,7 +118,7 @@ describe('DbContext', () => {
       await expectAsync(openPromise).toBeRejectedWith(mockRequest.error);
     });
 
-    it('should handle blocked event', async () => {
+    it('#Should handle blocked event', async () => {
       mockRequest.onblocked = jasmine.createSpy('onblocked');
       mockRequest.onsuccess = jasmine.createSpy('onsuccess');
       const instance = new DbContext(config);
@@ -136,7 +133,7 @@ describe('DbContext', () => {
   });
 
   describe('getDB', () => {
-    it('should return database instance when open', async () => {
+    it('#Should return database instance when open', async () => {
       mockIndexedDB.open.and.returnValue(mockRequest);
       mockRequest.onsuccess = jasmine.createSpy('onsuccess');
       const instance = new DbContext(config);
@@ -147,7 +144,7 @@ describe('DbContext', () => {
       expect(db).toBe(mockDB);
     });
 
-    it('should throw error when database not available', async () => {
+    it('#Should throw error when database not available', async () => {
       const instance = new DbContext(config);
       mockIndexedDB.open.and.throwError(new Error('Mock error'));
       await expectAsync(instance.getDB()).toBeRejectedWith(jasmine.objectContaining({message: 'Database instance not available'}));
@@ -165,7 +162,7 @@ describe('DbContext', () => {
       await openPromise;
     });
 
-    it('should execute transaction with IDBRequest result', async () => {
+    it('#Should execute transaction with IDBRequest result', async () => {
       const mockIDBRequest = jasmine.createSpyObj('IDBRequest', [], {
         result: 'testResult'
       });
@@ -173,7 +170,7 @@ describe('DbContext', () => {
 
       const resultPromise = dbContext.runTransaction('testStore', 'readonly', () => mockIDBRequest as any);
       // Wait for setup
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await delay(0);
       // Trigger request success and transaction complete synchronously
       mockIDBRequest.onsuccess();
       mockTransaction.oncomplete();
@@ -181,67 +178,67 @@ describe('DbContext', () => {
       expect(result).toBe('testResult');
     });
 
-    it('should execute transaction with Promise result', async () => {
+    it('#Should execute transaction with Promise result', async () => {
       const promiseResult = Promise.resolve('promiseResult');
 
       const resultPromise = dbContext.runTransaction('testStore', 'readonly', () => promiseResult);
       // Wait for setup
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await delay(0);
       mockTransaction.oncomplete();
       const result = await resultPromise;
       expect(result).toBe('promiseResult');
     });
 
-    it('should execute transaction with void result', async () => {
+    it('#Should execute transaction with void result', async () => {
 
       const resultPromise = dbContext.runTransaction('testStore', 'readonly', () => {});
       // Wait for setup
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await delay(0);
       mockTransaction.oncomplete();
       const result = await resultPromise;
       expect(result).toBeUndefined();
     });
 
-    it('should throw error for non-existent store', async () => {
+    it('#Should throw error for non-existent store', async () => {
       mockDB.objectStoreNames.contains.and.returnValue(false);
       const error = new Error('Object store "nonExistentStore" does not exist');
       await expectAsync(dbContext.runTransaction('nonExistentStore', 'readonly', () => {})).toBeRejectedWith(error);
     });
 
-    it('should handle transaction abort', async () => {
+    it('#Should handle transaction abort', async () => {
       const promise = dbContext.runTransaction('testStore', 'readonly', () => {});
       // Wait for setup
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await delay(0);
       mockTransaction.onabort();
       await expectAsync(promise).toBeRejectedWith(new Error('Transaction aborted'));
     });
 
-    it('should handle transaction error', async () => {
+    it('#Should handle transaction error', async () => {
       mockTransaction.error = new Error('Transaction error');
       const promise = dbContext.runTransaction('testStore', 'readonly', () => {});
       // Wait for setup
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await delay(0);
       mockTransaction.onerror();
       await expectAsync(promise).toBeRejectedWith(mockTransaction.error);
     });
   });
 
   describe('getDatabaseName', () => {
-    it('should return database name', () => {
+    it('#Should return database name', () => {
       const instance = new DbContext(config);
       expect(instance.getDatabaseName()).toBe('TestDB');
     });
   });
 
   describe('getVersion', () => {
-    it('should return database version', () => {
+    it('#Should return database version', () => {
       const instance = new DbContext(config);
       expect(instance.getVersion()).toBe(1);
     });
   });
 
   describe('close', () => {
-    it('should close database connection', async () => {
+    it('#Should close database connection', async () => {
       mockIndexedDB.open.and.returnValue(mockRequest);
       mockRequest.onsuccess = jasmine.createSpy('onsuccess');
       const instance = new DbContext(config);
@@ -254,12 +251,12 @@ describe('DbContext', () => {
   });
 
   describe('isOpen', () => {
-    it('should return false when not open', () => {
+    it('#Should return false when not open', () => {
       const instance = new DbContext(config);
       expect(instance.isOpen()).toBe(false);
     });
 
-    it('should return true when open', async () => {
+    it('#Should return true when open', async () => {
       mockIndexedDB.open.and.returnValue(mockRequest);
       mockRequest.onsuccess = jasmine.createSpy('onsuccess');
       const instance = new DbContext(config);
@@ -271,7 +268,7 @@ describe('DbContext', () => {
   });
 
   describe('getTransactionStats', () => {
-    it('should return transaction statistics', () => {
+    it('#Should return transaction statistics', () => {
       const instance = new DbContext(config);
       const stats = instance.getTransactionStats();
       expect(stats).toEqual({

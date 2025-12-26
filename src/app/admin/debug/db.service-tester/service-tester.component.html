@@ -1,0 +1,618 @@
+<div class="service-tester">
+  <!-- Header -->
+  <header class="tester-header">
+    <h2>🧪 Service Tester - HttpMockService</h2>
+    <div class="header-stats">
+      <div class="stat">
+        <span class="stat-label">Success Rate</span>
+        <span class="stat-value" [class.success]="successRate() > 80" [class.warning]="successRate() <= 80 && successRate() > 50" [class.error]="successRate() <= 50">
+          {{ successRate() }}%
+        </span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Avg Duration</span>
+        <span class="stat-value">{{ averageDuration() }}ms</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Total Tests</span>
+        <span class="stat-value">{{ testResults().length }}</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Total Mocks</span>
+        <span class="stat-value">{{ totalMocks() }}</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Initialization Guard -->
+  <div *ngIf="!isInitialized()" class="loading-container">
+    <div class="spinner"></div>
+    <p>Initializing service...</p>
+  </div>
+
+  <!-- Main Content -->
+  <div *ngIf="isInitialized()" class="tester-content">
+    
+    <!-- Tab Navigation -->
+    <nav class="tabs">
+      <button
+        *ngFor="let tab of tabs"
+        class="tab"
+        [class.active]="activeTab() === tab.id"
+        (click)="selectTab(tab.id)"
+        [disabled]="isLoading()">
+        <span class="tab-icon">{{ tab.icon }}</span>
+        <span class="tab-label">{{ tab.label }}</span>
+      </button>
+      
+      <!-- Results Toggle Button -->
+      <button class="tab results-toggle" (click)="toggleResults()" [class.active]="showResults()">
+        <span class="tab-icon">📋</span>
+        <span class="tab-label">Results ({{ testResults().length }})</span>
+      </button>
+    </nav>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+      
+      <!-- ================================================================== -->
+      <!-- CRUD TAB -->
+      <!-- ================================================================== -->
+      <div *ngIf="activeTab() === 'crud'" class="tab-panel">
+        <h3>CRUD Operations</h3>
+        
+        <!-- Create Mock -->
+        <div class="test-section">
+          <div class="section-header">
+            <h4>Create Mock</h4>
+            <div class="section-actions">
+              <button class="btn btn-sm btn-secondary" (click)="generateSampleMock()">
+                Generate Sample
+              </button>
+              <button class="btn btn-sm btn-secondary" (click)="generateErrorMock()">
+                Generate Error Mock
+              </button>
+            </div>
+          </div>
+          
+          <form class="test-form" (ngSubmit)="testCreate()">
+            <div class="form-row">
+              <label>Name</label>
+              <input type="text" [(ngModel)]="createForm.name" name="name" />
+            </div>
+            <div class="form-row">
+              <label>Service Code</label>
+              <input type="text" [(ngModel)]="createForm.serviceCode" name="serviceCode" required />
+            </div>
+            <div class="form-row">
+              <label>URL</label>
+              <input type="text" [(ngModel)]="createForm.url" name="url" required />
+            </div>
+            <div class="form-row">
+              <label>Method</label>
+              <select [(ngModel)]="createForm.method" name="method">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="DELETE">DELETE</option>
+                <option value="PATCH">PATCH</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>HTTP Code</label>
+              <input type="number" [(ngModel)]="createForm.httpCodeResponseValue" name="httpCode" />
+            </div>
+            <div class="form-row">
+              <label>Delay (ms)</label>
+              <input type="number" [(ngModel)]="createForm.delayMs" name="delay" />
+            </div>
+            <div class="form-row">
+              <label>Response Body (JSON)</label>
+              <textarea [(ngModel)]="createForm.responseBody" name="responseBody" rows="4"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary" [disabled]="isLoading()">
+              Create Mock
+            </button>
+          </form>
+        </div>
+
+        <!-- Update Mock -->
+        <div class="test-section">
+          <h4>Update Mock</h4>
+          <form class="test-form" (ngSubmit)="testUpdate()">
+            <div class="form-row">
+              <label>Mock ID</label>
+              <input type="text" [(ngModel)]="updateId" name="updateId" placeholder="Enter mock ID" required />
+            </div>
+            <div class="form-row">
+              <label>New Delay (ms)</label>
+              <input type="number" [(ngModel)]="updateDelay" name="updateDelay" />
+            </div>
+            <button type="submit" class="btn btn-primary" [disabled]="isLoading()">
+              Update Mock
+            </button>
+          </form>
+        </div>
+
+        <!-- Delete Mock -->
+        <div class="test-section">
+          <h4>Delete Mock</h4>
+          <form class="test-form" (ngSubmit)="testDelete()">
+            <div class="form-row">
+              <label>Mock ID</label>
+              <input type="text" [(ngModel)]="deleteId" name="deleteId" placeholder="Enter mock ID" required />
+            </div>
+            <button type="submit" class="btn btn-danger" [disabled]="isLoading()">
+              Delete Mock
+            </button>
+          </form>
+        </div>
+
+        <!-- Load All -->
+        <div class="test-section">
+          <h4>Load All Mocks</h4>
+          <button class="btn btn-primary" (click)="testLoadAll()" [disabled]="isLoading()">
+            Load All Mocks
+          </button>
+        </div>
+      </div>
+
+      <!-- ================================================================== -->
+      <!-- SEARCH TAB -->
+      <!-- ================================================================== -->
+      <div *ngIf="activeTab() === 'search'" class="tab-panel">
+        <h3>Search Operations</h3>
+        
+        <!-- Find Matching Mock -->
+        <div class="test-section">
+          <h4>Find Matching Mock</h4>
+          <form class="test-form" (ngSubmit)="testFindMatchingMock()">
+            <div class="form-row">
+              <label>URL</label>
+              <input type="text" [(ngModel)]="searchUrl" name="searchUrl" placeholder="/api/test" required />
+            </div>
+            <div class="form-row">
+              <label>Method</label>
+              <select [(ngModel)]="searchMethod" name="searchMethod">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="DELETE">DELETE</option>
+                <option value="PATCH">PATCH</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary" [disabled]="isLoading()">
+              Find Mock
+            </button>
+          </form>
+        </div>
+
+        <!-- Search with Filters -->
+        <div class="test-section">
+          <h4>Search Mocks (Advanced)</h4>
+          <form class="test-form" (ngSubmit)="testSearchMocks()">
+            <div class="form-row">
+              <label>Service Code Filter (optional)</label>
+              <input type="text" [(ngModel)]="filterServiceCode" name="filterServiceCode" placeholder="Leave empty for all" />
+            </div>
+            <div class="form-row">
+              <label>Sort By</label>
+              <select [(ngModel)]="querySortBy" name="querySortBy">
+                <option value="serviceCode">Service Code</option>
+                <option value="url">URL</option>
+                <option value="method">Method</option>
+                <option value="delayMs">Delay</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>Sort Direction</label>
+              <select [(ngModel)]="querySortDirection" name="querySortDirection">
+                <option value="asc">Ascending</option>
+                <option value="desc">Descending</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>Limit</label>
+              <input type="number" [(ngModel)]="queryLimit" name="queryLimit" min="1" />
+            </div>
+            <div class="form-row">
+              <label>Offset</label>
+              <input type="number" [(ngModel)]="queryOffset" name="queryOffset" min="0" />
+            </div>
+            <button type="submit" class="btn btn-primary" [disabled]="isLoading()">
+              Search
+            </button>
+          </form>
+        </div>
+
+        <!-- Load by Service Code -->
+        <div class="test-section">
+          <h4>Load by Service Code</h4>
+          <form class="test-form" (ngSubmit)="testLoadByServiceCode()">
+            <div class="form-row">
+              <label>Service Code</label>
+              <input type="text" [(ngModel)]="filterServiceCode" name="loadServiceCode" required />
+            </div>
+            <button type="submit" class="btn btn-primary" [disabled]="isLoading()">
+              Load by Service Code
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- ================================================================== -->
+      <!-- SERVICE CODES TAB -->
+      <!-- ================================================================== -->
+      <div *ngIf="activeTab() === 'servicecodes'" class="tab-panel">
+        <h3>Service Code Operations</h3>
+        
+        <!-- Get Unique Service Codes -->
+        <div class="test-section">
+          <h4>Get Unique Service Codes</h4>
+          <button class="btn btn-primary" (click)="testGetUniqueServiceCodes()" [disabled]="isLoading()">
+            Get Service Codes
+          </button>
+          
+          <div *ngIf="serviceCodes().length > 0" class="info-box">
+            <strong>Current Service Codes:</strong>
+            <div class="code-list">
+              <span *ngFor="let code of serviceCodes()" class="code-badge">{{ code }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Get Service Codes with Stats -->
+        <div class="test-section">
+          <h4>Get Service Codes with Statistics</h4>
+          <button class="btn btn-primary" (click)="testGetServiceCodesWithStats()" [disabled]="isLoading()">
+            Get Stats
+          </button>
+        </div>
+
+        <!-- Select Service Code Filter -->
+        <div class="test-section">
+          <h4>Select Service Code Filter</h4>
+          <div class="form-row">
+            <label>Service Code</label>
+            <select [(ngModel)]="selectedServiceCodeForStats" name="selectedServiceCodeForStats">
+              <option value="">-- None (Show All) --</option>
+              <option *ngFor="let code of serviceCodes()" [value]="code">{{ code }}</option>
+            </select>
+          </div>
+          <div class="button-group">
+            <button class="btn btn-primary" (click)="selectServiceCodeFilter(selectedServiceCodeForStats || null)">
+              Apply Filter
+            </button>
+            <button class="btn btn-secondary" (click)="clearFilters()">
+              Clear Filters
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================== -->
+      <!-- INTERCEPTION TAB -->
+      <!-- ================================================================== -->
+      <div *ngIf="activeTab() === 'interception'" class="tab-panel">
+        <h3>HTTP Interception</h3>
+        
+        <!-- Current Config -->
+        <div class="test-section">
+          <h4>Current Configuration</h4>
+          <div class="config-display">
+            <div class="config-item">
+              <span class="config-label">Enabled:</span>
+              <span class="config-value" [class.active]="interceptionConfig().enabled">
+                {{ interceptionConfig().enabled ? '✅ Yes' : '❌ No' }}
+              </span>
+            </div>
+            <div class="config-item">
+              <span class="config-label">Default Delay:</span>
+              <span class="config-value">{{ interceptionConfig().defaultDelay }}ms</span>
+            </div>
+            <div class="config-item">
+              <span class="config-label">Fallback to Real:</span>
+              <span class="config-value">{{ interceptionConfig().fallbackToReal ? 'Yes' : 'No' }}</span>
+            </div>
+            <div class="config-item">
+              <span class="config-label">Log Requests:</span>
+              <span class="config-value">{{ interceptionConfig().logRequests ? 'Yes' : 'No' }}</span>
+            </div>
+            <div class="config-item">
+              <span class="config-label">Service Codes:</span>
+              <span class="config-value">{{ interceptionConfig().serviceCodes.join(', ') || 'All' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Update Config -->
+        <div class="test-section">
+          <h4>Update Interception Config</h4>
+          <form class="test-form" (ngSubmit)="updateInterceptionSettings()">
+            <div class="form-row">
+              <label>
+                <input type="checkbox" [(ngModel)]="interceptionEnabled" name="interceptionEnabled" />
+                Enable Interception
+              </label>
+            </div>
+            <div class="form-row">
+              <label>Default Delay (ms)</label>
+              <input type="number" [(ngModel)]="defaultDelay" name="defaultDelay" />
+            </div>
+            <div class="form-row">
+              <label>
+                <input type="checkbox" [(ngModel)]="fallbackToReal" name="fallbackToReal" />
+                Fallback to Real Requests
+              </label>
+            </div>
+            <div class="form-row">
+              <label>
+                <input type="checkbox" [(ngModel)]="logRequests" name="logRequests" />
+                Log Intercepted Requests
+              </label>
+            </div>
+            <div class="form-row">
+              <label>Service Codes (comma-separated, empty for all)</label>
+              <input type="text" [(ngModel)]="interceptServiceCodes" name="interceptServiceCodes" placeholder="SVC1, SVC2" />
+            </div>
+            <button type="submit" class="btn btn-primary" [disabled]="isLoading()">
+              Update Config
+            </button>
+          </form>
+        </div>
+
+        <!-- Toggle Interception -->
+        <div class="test-section">
+          <h4>Quick Toggle</h4>
+          <button class="btn" [class.btn-success]="!interceptionConfig().enabled" [class.btn-warning]="interceptionConfig().enabled" (click)="toggleInterception()">
+            {{ interceptionConfig().enabled ? 'Disable' : 'Enable' }} Interception
+          </button>
+        </div>
+
+        <!-- Test Intercept Request -->
+        <div class="test-section">
+          <h4>Test Intercept Request</h4>
+          <form class="test-form" (ngSubmit)="testInterceptRequest()">
+            <div class="form-row">
+              <label>URL</label>
+              <input type="text" [(ngModel)]="testInterceptUrl" name="testInterceptUrl" required />
+            </div>
+            <div class="form-row">
+              <label>Method</label>
+              <select [(ngModel)]="testInterceptMethod" name="testInterceptMethod">
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="DELETE">DELETE</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary" [disabled]="isLoading()">
+              Test Intercept
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- ================================================================== -->
+      <!-- IMPORT/EXPORT TAB -->
+      <!-- ================================================================== -->
+      <div *ngIf="activeTab() === 'importexport'" class="tab-panel">
+        <h3>Import/Export Operations</h3>
+        
+        <!-- Export Mocks -->
+        <div class="test-section">
+          <h4>Export Mocks</h4>
+          <form class="test-form" (ngSubmit)="testExportMocks()">
+            <div class="form-row">
+              <label>Service Code (optional - leave empty for all)</label>
+              <input type="text" [(ngModel)]="exportServiceCode" name="exportServiceCode" placeholder="Leave empty for all mocks" />
+            </div>
+            <button type="submit" class="btn btn-primary" [disabled]="isLoading()">
+              Export & Download
+            </button>
+          </form>
+        </div>
+
+        <!-- Import Mocks -->
+        <div class="test-section">
+          <div class="section-header">
+            <h4>Import Mocks</h4>
+            <button class="btn btn-sm btn-secondary" (click)="loadSampleImportData()">
+              Load Sample Data
+            </button>
+          </div>
+          
+          <form class="test-form" (ngSubmit)="testImportMocks()">
+            <div class="form-row">
+              <label>JSON Data (array of mocks)</label>
+              <textarea [(ngModel)]="importJson" name="importJson" rows="10" placeholder='[{"name": "...", "serviceCode": "...", ...}]'></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary" [disabled]="isLoading()">
+              Import Mocks
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- ================================================================== -->
+      <!-- CLEANUP TAB -->
+      <!-- ================================================================== -->
+      <div *ngIf="activeTab() === 'cleanup'" class="tab-panel">
+        <h3>Cleanup & Maintenance</h3>
+        
+        <!-- Cleanup by Service Code -->
+        <div class="test-section">
+          <h4>Cleanup by Service Code</h4>
+          <form class="test-form" (ngSubmit)="testCleanupByServiceCode()">
+            <div class="form-row">
+              <label>Service Code</label>
+              <input type="text" [(ngModel)]="cleanupServiceCode" name="cleanupServiceCode" required />
+            </div>
+            <button type="submit" class="btn btn-warning" [disabled]="isLoading()">
+              Cleanup Service Code
+            </button>
+          </form>
+        </div>
+
+        <!-- Cleanup by Age -->
+        <div class="test-section">
+          <h4>Cleanup Old Mocks</h4>
+          <form class="test-form" (ngSubmit)="testCleanupByAge()">
+            <div class="form-row">
+              <label>Older Than (days)</label>
+              <input type="number" [(ngModel)]="cleanupOlderThanDays" name="cleanupOlderThanDays" min="1" />
+            </div>
+            <button type="submit" class="btn btn-warning" [disabled]="isLoading()">
+              Cleanup Old Mocks
+            </button>
+          </form>
+        </div>
+
+        <!-- Clear All -->
+        <div class="test-section">
+          <h4>Clear All Mocks</h4>
+          <p class="warning-text">⚠️ This will permanently delete ALL mocks!</p>
+          <button class="btn btn-danger" (click)="testClearAll()" [disabled]="isLoading()">
+            Clear All Mocks
+          </button>
+        </div>
+
+        <!-- Update Statistics -->
+        <div class="test-section">
+          <h4>Update Statistics</h4>
+          <button class="btn btn-primary" (click)="testUpdateStatistics()" [disabled]="isLoading()">
+            Refresh Statistics
+          </button>
+          
+          <div *ngIf="statistics()" class="stats-display">
+            <h5>Current Statistics:</h5>
+            <pre>{{ statistics() | json }}</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================== -->
+      <!-- HEALTH TAB -->
+      <!-- ================================================================== -->
+      <div *ngIf="activeTab() === 'health'" class="tab-panel">
+        <h3>Health & Diagnostics</h3>
+        
+        <!-- Database Health -->
+        <div class="test-section">
+          <h4>Database Health Check</h4>
+          <button class="btn btn-primary" (click)="testGetDatabaseHealth()" [disabled]="isLoading()">
+            Check Health
+          </button>
+          
+          <div *ngIf="healthData" class="health-display">
+            <div class="health-item" [class.healthy]="healthData.isConnected" [class.unhealthy]="!healthData.isConnected">
+              <span class="health-label">Connection:</span>
+              <span class="health-value">{{ healthData.isConnected ? '✅ Connected' : '❌ Disconnected' }}</span>
+            </div>
+            <div class="health-item">
+              <span class="health-label">Database:</span>
+              <span class="health-value">{{ healthData.databaseName }}</span>
+            </div>
+            <div class="health-item">
+              <span class="health-label">Version:</span>
+              <span class="health-value">{{ healthData.version }}</span>
+            </div>
+            <div class="health-item">
+              <span class="health-label">Transactions:</span>
+              <span class="health-value">
+                Total: {{ healthData.transactions.total }}, 
+                Active: {{ healthData.transactions.active }}, 
+                Success: {{ healthData.transactions.successful }}, 
+                Failed: {{ healthData.transactions.failed }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Reset Service -->
+        <div class="test-section">
+          <h4>Reset Service</h4>
+          <p class="info-text">Resets the service state (does not affect database)</p>
+          <button class="btn btn-warning" (click)="resetService()">
+            Reset Service State
+          </button>
+        </div>
+
+        <!-- Service State -->
+        <div class="test-section">
+          <h4>Current Service State</h4>
+          <div class="state-display">
+            <div class="state-item">
+              <span class="state-label">Loading:</span>
+              <span class="state-value">{{ loading() ? 'Yes' : 'No' }}</span>
+            </div>
+            <div class="state-item">
+              <span class="state-label">Error:</span>
+              <span class="state-value">{{ error() || 'None' }}</span>
+            </div>
+            <div class="state-item">
+              <span class="state-label">Total Mocks:</span>
+              <span class="state-value">{{ totalMocks() }}</span>
+            </div>
+            <div class="state-item">
+              <span class="state-label">Service Codes:</span>
+              <span class="state-value">{{ serviceCodes().length }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    
+    <!-- Results Panel (Collapsible Sidebar) -->
+    <aside class="results-panel" [class.collapsed]="!showResults()">
+      <div class="results-header">
+        <h3>Test Results</h3>
+        <div class="results-actions">
+          <button class="btn btn-sm" (click)="clearResults()" [disabled]="testResults().length === 0">
+            Clear
+          </button>
+          <button class="btn btn-sm" (click)="exportResults()" [disabled]="testResults().length === 0">
+            Export
+          </button>
+          <button class="btn btn-sm btn-close" (click)="toggleResults()" title="Close">
+            ✕
+          </button>
+        </div>
+      </div>
+
+      <div class="results-list">
+        <div *ngIf="testResults().length === 0" class="empty-state">
+          No test results yet. Run a test to see results here.
+        </div>
+
+        <div *ngFor="let result of recentResults()" class="result-card" [class.success]="result.success" [class.error]="!result.success">
+          <div class="result-header">
+            <span class="result-icon">{{ result.success ? '✅' : '❌' }}</span>
+            <span class="result-method">{{ result.method }}</span>
+            <span class="result-duration">{{ result.duration }}ms</span>
+          </div>
+          
+          <div class="result-body">
+            <div *ngIf="result.success && result.data" class="result-data">
+              <pre>{{ result.data | json }}</pre>
+            </div>
+            <div *ngIf="!result.success && result.error" class="result-error">
+              <strong>Error:</strong> {{ result.error }}
+            </div>
+          </div>
+          
+          <div class="result-footer">
+            <small>{{ result.timestamp | date:'medium' }}</small>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div *ngIf="isLoading()" class="loading-overlay">
+    <div class="spinner"></div>
+    <p>Running test...</p>
+  </div>
+</div>

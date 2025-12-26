@@ -1,384 +1,718 @@
-import { detectExportType, hasDigitalSignature, validateMocksExport, validateDatabaseExport, validateDatabaseConfig, validateImportedFile, ExportFileType, ValidationResult } from './json-validator.utils';
-import { DatabaseConfig } from '../../app/components/interfaces';
+import {
+  detectExportType,
+  hasDigitalSignature,
+  validateMocksExport,
+  validateDatabaseExport,
+  validateDatabaseConfig,
+  validateImportedFile
+} from './json-validator.utils';
+import { IDbConfig } from '../types/database.types';
 
-describe('JsonValidatorUtils', () => {
+describe('json-validator.utils', () => {
+
   describe('detectExportType', () => {
-    it('should return unknown for null', () => {
-      expect(detectExportType(null)).toBe('unknown');
+    it('#Should return unknown when data is null', () => {
+      const result = detectExportType(null);
+
+      expect(result).toBe('unknown');
     });
 
-    it('should return unknown for undefined', () => {
-      expect(detectExportType(undefined)).toBe('unknown');
+    it('#Should return unknown when data is undefined', () => {
+      const result = detectExportType(undefined);
+
+      expect(result).toBe('unknown');
     });
 
-    it('should return unknown for non-object', () => {
-      expect(detectExportType('string')).toBe('unknown');
+    it('#Should return unknown when data is not an object', () => {
+      const result = detectExportType('string');
+
+      expect(result).toBe('unknown');
     });
 
-    it('should return unknown for empty object', () => {
-      expect(detectExportType({})).toBe('unknown');
-    });
-
-    it('should return mocks for valid mocks export', () => {
+    it('#Should return mocks when type is mocks and mocks array exists', () => {
       const data = { type: 'mocks', mocks: [] };
-      expect(detectExportType(data)).toBe('mocks');
+
+      const result = detectExportType(data);
+
+      expect(result).toBe('mocks');
     });
 
-    it('should return complete-database for valid database export', () => {
+    it('#Should return unknown when type is mocks but mocks is not array', () => {
+      const data = { type: 'mocks', mocks: 'not-array' };
+
+      const result = detectExportType(data);
+
+      expect(result).toBe('unknown');
+    });
+
+    it('#Should return complete-database when all required fields exist', () => {
       const data = { type: 'complete-database', databaseConfig: {}, mocks: [] };
-      expect(detectExportType(data)).toBe('complete-database');
+
+      const result = detectExportType(data);
+
+      expect(result).toBe('complete-database');
     });
 
-    it('should return manual-config for object with selectedContext', () => {
-      const data = { selectedContext: 'test' };
-      expect(detectExportType(data)).toBe('manual-config');
+    it('#Should return unknown when type is complete-database but databaseConfig missing', () => {
+      const data = { type: 'complete-database', mocks: [] };
+
+      const result = detectExportType(data);
+
+      expect(result).toBe('unknown');
     });
 
-    it('should return manual-config for object with headers', () => {
+    it('#Should return unknown when type is complete-database but mocks missing', () => {
+      const data = { type: 'complete-database', databaseConfig: {} };
+
+      const result = detectExportType(data);
+
+      expect(result).toBe('unknown');
+    });
+
+    it('#Should return manual-config when selectedContext exists', () => {
+      const data = { selectedContext: 'context' };
+
+      const result = detectExportType(data);
+
+      expect(result).toBe('manual-config');
+    });
+
+    it('#Should return manual-config when headers exists', () => {
       const data = { headers: {} };
-      expect(detectExportType(data)).toBe('manual-config');
+
+      const result = detectExportType(data);
+
+      expect(result).toBe('manual-config');
     });
 
-    it('should return manual-config for object with nameMock', () => {
-      const data = { nameMock: 'test' };
-      expect(detectExportType(data)).toBe('manual-config');
+    it('#Should return manual-config when nameMock exists', () => {
+      const data = { nameMock: 'mock-name' };
+
+      const result = detectExportType(data);
+
+      expect(result).toBe('manual-config');
     });
 
-    it('should return manual-config for object with serviceCode', () => {
-      const data = { serviceCode: 'test' };
-      expect(detectExportType(data)).toBe('manual-config');
+    it('#Should return manual-config when serviceCode exists', () => {
+      const data = { serviceCode: 'code' };
+
+      const result = detectExportType(data);
+
+      expect(result).toBe('manual-config');
     });
 
-    it('should return unknown for invalid mocks export', () => {
-      const data = { type: 'mocks' };
-      expect(detectExportType(data)).toBe('unknown');
-    });
+    it('#Should return unknown when no matching pattern found', () => {
+      const data = { randomField: 'value' };
 
-    it('should return unknown for invalid database export', () => {
-      const data = { type: 'complete-database' };
-      expect(detectExportType(data)).toBe('unknown');
+      const result = detectExportType(data);
+
+      expect(result).toBe('unknown');
     });
   });
 
   describe('hasDigitalSignature', () => {
-    it('should return false for null', () => {
-      expect(hasDigitalSignature(null)).toBe(false);
+    it('#Should return true when valid hash exists', () => {
+      const data = { _hash: 'a'.repeat(64) };
+
+      const result = hasDigitalSignature(data);
+
+      expect(result).toBe(true);
     });
 
-    it('should return false for non-object', () => {
-      expect(hasDigitalSignature('string')).toBe(false);
+    it('#Should return false when data is null', () => {
+      const result = hasDigitalSignature(null);
+
+      expect(result).toBe(false);
     });
 
-    it('should return false for object without _hash', () => {
-      expect(hasDigitalSignature({})).toBe(false);
+    it('#Should return false when data is undefined', () => {
+      const result = hasDigitalSignature(undefined);
+
+      expect(result).toBe(false);
     });
 
-    it('should return false for object with non-string _hash', () => {
-      expect(hasDigitalSignature({ _hash: 123 })).toBe(false);
+    it('#Should return false when data is not an object', () => {
+      const result = hasDigitalSignature('string');
+
+      expect(result).toBe(false);
     });
 
-    it('should return false for object with short _hash', () => {
-      expect(hasDigitalSignature({ _hash: 'short' })).toBe(false);
+    it('#Should return false when _hash is not a string', () => {
+      const data = { _hash: 123 };
+
+      const result = hasDigitalSignature(data);
+
+      expect(result).toBe(false);
     });
 
-    it('should return false for object with long _hash', () => {
-      expect(hasDigitalSignature({ _hash: 'a'.repeat(65) })).toBe(false);
+    it('#Should return false when _hash length is not 64', () => {
+      const data = { _hash: 'short' };
+
+      const result = hasDigitalSignature(data);
+
+      expect(result).toBe(false);
     });
 
-    it('should return true for object with valid _hash', () => {
-      expect(hasDigitalSignature({ _hash: 'a'.repeat(64) })).toBe(true);
+    it('#Should return false when _hash is missing', () => {
+      const data = { other: 'field' };
+
+      const result = hasDigitalSignature(data);
+
+      expect(result).toBe(false);
+    });
+
+    it('#Should return false when _hash is empty string', () => {
+      const data = { _hash: '' };
+
+      const result = hasDigitalSignature(data);
+
+      expect(result).toBe(false);
+    });
+
+    it('#Should return false when _hash length is greater than 64', () => {
+      const data = { _hash: 'a'.repeat(65) };
+
+      const result = hasDigitalSignature(data);
+
+      expect(result).toBe(false);
+    });
+
+    it('#Should return false when _hash length is less than 64', () => {
+      const data = { _hash: 'a'.repeat(63) };
+
+      const result = hasDigitalSignature(data);
+
+      expect(result).toBe(false);
     });
   });
 
   describe('validateMocksExport', () => {
-    it('should return invalid for null', () => {
-      const result = validateMocksExport(null);
-      expect(result.isValid).toBe(false);
-    });
+    it('#Should return valid result for correct mocks export', () => {
+      const data = { type: 'mocks', mocks: [{ id: 1 }] };
 
-    it('should return invalid for non-object', () => {
-      const result = validateMocksExport('string');
-      expect(result.isValid).toBe(false);
-    });
-
-    it('should return invalid for wrong type', () => {
-      const data = { type: 'wrong', mocks: [] };
       const result = validateMocksExport(data);
-      expect(result.isValid).toBe(false);
-    });
 
-    it('should return invalid for non-array mocks', () => {
-      const data = { type: 'mocks', mocks: 'not-array' };
-      const result = validateMocksExport(data);
-      expect(result.isValid).toBe(false);
-    });
-
-    it('should return valid for empty mocks array', () => {
-      const data = { type: 'mocks', mocks: [] };
-      const result = validateMocksExport(data);
       expect(result.isValid).toBe(true);
     });
 
-    it('should return warning for empty mocks array', () => {
-      const data = { type: 'mocks', mocks: [] };
+    it('#Should return invalid when data is null', () => {
+      const result = validateMocksExport(null);
+
+      expect(result.isValid).toBe(false);
+    });
+
+    it('#Should return unknown type when data is null', () => {
+      const result = validateMocksExport(null);
+
+      expect(result.type).toBe('unknown');
+    });
+
+    it('#Should add error when data is not object', () => {
+      const result = validateMocksExport('string');
+
+      expect(result.errors.length).toBeGreaterThan(0);
+    });
+
+    it('#Should add error when type is not mocks', () => {
+      const data = { type: 'other', mocks: [] };
+
       const result = validateMocksExport(data);
+
+      expect(result.errors).toContain('Tipo esperado: "mocks", recibido: "other"');
+    });
+
+    it('#Should add error when mocks is not array', () => {
+      const data = { type: 'mocks', mocks: 'not-array' };
+
+      const result = validateMocksExport(data);
+
+      expect(result.errors).toContain('El campo "mocks" debe ser un array');
+    });
+
+    it('#Should add warning when mocks array is empty', () => {
+      const data = { type: 'mocks', mocks: [] };
+
+      const result = validateMocksExport(data);
+
       expect(result.warnings).toContain('El array de mocks está vacío');
     });
 
-    it('should return warning for invalid exportDate', () => {
+    it('#Should add warning when exportDate is not string', () => {
       const data = { type: 'mocks', mocks: [], exportDate: 123 };
+
       const result = validateMocksExport(data);
+
       expect(result.warnings).toContain('El campo "exportDate" debe ser una cadena ISO');
     });
 
-    it('should return warning for invalid totalMocks', () => {
-      const data = { type: 'mocks', mocks: [], totalMocks: 'not-number' };
+    it('#Should not add warning when exportDate is valid string', () => {
+      const data = { type: 'mocks', mocks: [], exportDate: '2025-12-24' };
+
       const result = validateMocksExport(data);
+
+      expect(result.warnings.some(w => w.includes('exportDate'))).toBe(false);
+    });
+
+    it('#Should add warning when totalMocks is not number', () => {
+      const data = { type: 'mocks', mocks: [], totalMocks: 'not-number' };
+
+      const result = validateMocksExport(data);
+
       expect(result.warnings).toContain('El campo "totalMocks" debe ser un número');
     });
 
-    it('should return valid for complete valid data', () => {
-      const data = { type: 'mocks', mocks: [{}], exportDate: '2023-01-01', totalMocks: 1 };
+    it('#Should not add warning when totalMocks is valid number', () => {
+      const data = { type: 'mocks', mocks: [], totalMocks: 5 };
+
       const result = validateMocksExport(data);
-      expect(result.isValid).toBe(true);
+
+      expect(result.warnings.some(w => w.includes('totalMocks'))).toBe(false);
+    });
+
+    it('#Should return mocks type', () => {
+      const data = { type: 'mocks', mocks: [] };
+
+      const result = validateMocksExport(data);
+
+      expect(result.type).toBe('mocks');
     });
   });
 
   describe('validateDatabaseExport', () => {
-    it('should return invalid for null', () => {
+    it('#Should return valid result for correct database export', () => {
+      const data = {
+        type: 'complete-database',
+        databaseConfig: {
+          name: 'testDB',
+          version: 1,
+          objectStores: [{ name: 'store1' }]
+        },
+        mocks: []
+      };
+
+      const result = validateDatabaseExport(data);
+
+      expect(result.isValid).toBe(true);
+    });
+
+    it('#Should return invalid when data is null', () => {
       const result = validateDatabaseExport(null);
+
       expect(result.isValid).toBe(false);
     });
 
-    it('should return invalid for non-object', () => {
-      const result = validateDatabaseExport('string');
-      expect(result.isValid).toBe(false);
+    it('#Should return unknown type when data is invalid', () => {
+      const result = validateDatabaseExport(null);
+
+      expect(result.type).toBe('unknown');
     });
 
-    it('should return invalid for wrong type', () => {
-      const data = { type: 'wrong', databaseConfig: {}, mocks: [] };
+    it('#Should add error when type is not complete-database', () => {
+      const data = { type: 'other' };
+
       const result = validateDatabaseExport(data);
-      expect(result.isValid).toBe(false);
+
+      expect(result.errors).toContain('Tipo esperado: "complete-database", recibido: "other"');
     });
 
-    it('should return invalid for missing databaseConfig', () => {
-      const data = { type: 'complete-database', mocks: [] };
+    it('#Should add error when databaseConfig is missing', () => {
+      const data = { type: 'complete-database' };
+
       const result = validateDatabaseExport(data);
-      expect(result.isValid).toBe(false);
+
+      expect(result.errors).toContain('Falta el campo "databaseConfig" o no es un objeto');
     });
 
-    it('should return invalid for non-object databaseConfig', () => {
-      const data = { type: 'complete-database', databaseConfig: 'not-object', mocks: [] };
+    it('#Should add error when databaseConfig is not object', () => {
+      const data = { type: 'complete-database', databaseConfig: 'not-object' };
+
       const result = validateDatabaseExport(data);
-      expect(result.isValid).toBe(false);
+
+      expect(result.errors).toContain('Falta el campo "databaseConfig" o no es un objeto');
     });
 
-    it('should return invalid for missing config name', () => {
-      const data = { type: 'complete-database', databaseConfig: { version: 1, objectStoreName: 'test', keyPath: 'id' }, mocks: [] };
+    it('#Should add error when databaseConfig name is missing', () => {
+      const data = {
+        type: 'complete-database',
+        databaseConfig: { version: 1, objectStores: [] },
+        mocks: []
+      };
+
       const result = validateDatabaseExport(data);
-      expect(result.isValid).toBe(false);
+
+      expect(result.errors).toContain('databaseConfig.name es requerido y debe ser string');
     });
 
-    it('should return invalid for non-string config name', () => {
-      const data = { type: 'complete-database', databaseConfig: { name: 123, version: 1, objectStoreName: 'test', keyPath: 'id' }, mocks: [] };
+    it('#Should add error when databaseConfig name is not string', () => {
+      const data = {
+        type: 'complete-database',
+        databaseConfig: { name: 123, version: 1, objectStores: [] },
+        mocks: []
+      };
+
       const result = validateDatabaseExport(data);
-      expect(result.isValid).toBe(false);
+
+      expect(result.errors).toContain('databaseConfig.name es requerido y debe ser string');
     });
 
-    it('should return invalid for missing config version', () => {
-      const data = { type: 'complete-database', databaseConfig: { name: 'test', objectStoreName: 'test', keyPath: 'id' }, mocks: [] };
+    it('#Should add error when databaseConfig version is missing', () => {
+      const data = {
+        type: 'complete-database',
+        databaseConfig: { name: 'db', objectStores: [] },
+        mocks: []
+      };
+
       const result = validateDatabaseExport(data);
-      expect(result.isValid).toBe(false);
+
+      expect(result.errors).toContain('databaseConfig.version es requerido y debe ser number');
     });
 
-    it('should return invalid for non-number config version', () => {
-      const data = { type: 'complete-database', databaseConfig: { name: 'test', version: 'not-number', objectStoreName: 'test', keyPath: 'id' }, mocks: [] };
+    it('#Should add error when databaseConfig version is not number', () => {
+      const data = {
+        type: 'complete-database',
+        databaseConfig: { name: 'db', version: 'not-number', objectStores: [] },
+        mocks: []
+      };
+
       const result = validateDatabaseExport(data);
-      expect(result.isValid).toBe(false);
+
+      expect(result.errors).toContain('databaseConfig.version es requerido y debe ser number');
     });
 
-    it('should return invalid for missing config objectStoreName', () => {
-      const data = { type: 'complete-database', databaseConfig: { name: 'test', version: 1, keyPath: 'id' }, mocks: [] };
+    it('#Should add error when objectStores is not array', () => {
+      const data = {
+        type: 'complete-database',
+        databaseConfig: { name: 'db', version: 1, objectStores: 'not-array' },
+        mocks: []
+      };
+
       const result = validateDatabaseExport(data);
-      expect(result.isValid).toBe(false);
+
+      expect(result.errors).toContain('databaseConfig.objectStores es requerido y debe ser un array');
     });
 
-    it('should return invalid for non-string config objectStoreName', () => {
-      const data = { type: 'complete-database', databaseConfig: { name: 'test', version: 1, objectStoreName: 123, keyPath: 'id' }, mocks: [] };
+    it('#Should add error when objectStores is empty', () => {
+      const data = {
+        type: 'complete-database',
+        databaseConfig: { name: 'db', version: 1, objectStores: [] },
+        mocks: []
+      };
+
       const result = validateDatabaseExport(data);
-      expect(result.isValid).toBe(false);
+
+      expect(result.errors).toContain('databaseConfig.objectStores no puede estar vacío');
     });
 
-    it('should return invalid for missing config keyPath', () => {
-      const data = { type: 'complete-database', databaseConfig: { name: 'test', version: 1, objectStoreName: 'test' }, mocks: [] };
+    it('#Should add error when mocks is not array', () => {
+      const data = {
+        type: 'complete-database',
+        databaseConfig: { name: 'db', version: 1, objectStores: [{}] },
+        mocks: 'not-array'
+      };
+
       const result = validateDatabaseExport(data);
-      expect(result.isValid).toBe(false);
+
+      expect(result.errors).toContain('El campo "mocks" debe ser un array');
     });
 
-    it('should return invalid for non-string config keyPath', () => {
-      const data = { type: 'complete-database', databaseConfig: { name: 'test', version: 1, objectStoreName: 'test', keyPath: 123 }, mocks: [] };
-      const result = validateDatabaseExport(data);
-      expect(result.isValid).toBe(false);
-    });
+    it('#Should add warning when mocks array is empty', () => {
+      const data = {
+        type: 'complete-database',
+        databaseConfig: { name: 'db', version: 1, objectStores: [{ name: 'store' }] },
+        mocks: []
+      };
 
-    it('should return warning for non-array config indexes', () => {
-      const data = { type: 'complete-database', databaseConfig: { name: 'test', version: 1, objectStoreName: 'test', keyPath: 'id', indexes: 'not-array' }, mocks: [] };
       const result = validateDatabaseExport(data);
-      expect(result.warnings).toContain('databaseConfig.indexes debe ser un array');
-    });
 
-    it('should return invalid for non-array mocks', () => {
-      const data = { type: 'complete-database', databaseConfig: { name: 'test', version: 1, objectStoreName: 'test', keyPath: 'id' }, mocks: 'not-array' };
-      const result = validateDatabaseExport(data);
-      expect(result.isValid).toBe(false);
-    });
-
-    it('should return warning for empty mocks array', () => {
-      const data = { type: 'complete-database', databaseConfig: { name: 'test', version: 1, objectStoreName: 'test', keyPath: 'id' }, mocks: [] };
-      const result = validateDatabaseExport(data);
       expect(result.warnings).toContain('El array de mocks está vacío');
     });
 
-    it('should return valid for complete valid data', () => {
-      const data = { type: 'complete-database', databaseConfig: { name: 'test', version: 1, objectStoreName: 'test', keyPath: 'id', indexes: [] }, mocks: [{}] };
+    it('#Should return complete-database type', () => {
+      const data = {
+        type: 'complete-database',
+        databaseConfig: { name: 'db', version: 1, objectStores: [{}] },
+        mocks: []
+      };
+
       const result = validateDatabaseExport(data);
-      expect(result.isValid).toBe(true);
+
+      expect(result.type).toBe('complete-database');
     });
   });
 
   describe('validateDatabaseConfig', () => {
-    it('should return invalid for missing name', () => {
-      const config: DatabaseConfig = { name: '', version: 1, objectStoreName: 'test', keyPath: 'id', indexes: [] };
-      const result = validateDatabaseConfig(config);
-      expect(result.isValid).toBe(false);
-    });
+    it('#Should return valid result for correct config', () => {
+      const config: IDbConfig = {
+        name: 'testDB',
+        version: 1,
+        objectStores: [{ name: 'store1' }]
+      };
 
-    it('should return invalid for empty name', () => {
-      const config: DatabaseConfig = { name: '', version: 1, objectStoreName: 'test', keyPath: 'id', indexes: [] };
       const result = validateDatabaseConfig(config);
-      expect(result.isValid).toBe(false);
-    });
 
-    it('should return invalid for version less than 1', () => {
-      const config: DatabaseConfig = { name: 'test', version: 0, objectStoreName: 'test', keyPath: 'id', indexes: [] };
-      const result = validateDatabaseConfig(config);
-      expect(result.isValid).toBe(false);
-    });
-
-    it('should return invalid for undefined version', () => {
-      const config: DatabaseConfig = { name: 'test', version: 0, objectStoreName: 'test', keyPath: 'id', indexes: [] };
-      const result = validateDatabaseConfig(config);
-      expect(result.isValid).toBe(false);
-    });
-
-    it('should return invalid for missing objectStoreName', () => {
-      const config: DatabaseConfig = { name: 'test', version: 1, objectStoreName: '', keyPath: 'id', indexes: [] };
-      const result = validateDatabaseConfig(config);
-      expect(result.isValid).toBe(false);
-    });
-
-    it('should return invalid for empty objectStoreName', () => {
-      const config: DatabaseConfig = { name: 'test', version: 1, objectStoreName: '', keyPath: 'id', indexes: [] };
-      const result = validateDatabaseConfig(config);
-      expect(result.isValid).toBe(false);
-    });
-
-    it('should return invalid for missing keyPath', () => {
-      const config: DatabaseConfig = { name: 'test', version: 1, objectStoreName: 'test', keyPath: '', indexes: [] };
-      const result = validateDatabaseConfig(config);
-      expect(result.isValid).toBe(false);
-    });
-
-    it('should return invalid for empty keyPath', () => {
-      const config: DatabaseConfig = { name: 'test', version: 1, objectStoreName: 'test', keyPath: '', indexes: [] };
-      const result = validateDatabaseConfig(config);
-      expect(result.isValid).toBe(false);
-    });
-
-    it('should return invalid for non-array indexes', () => {
-      const config: DatabaseConfig = { name: 'test', version: 1, objectStoreName: 'test', keyPath: 'id', indexes: 'not-array' as any };
-      const result = validateDatabaseConfig(config);
-      expect(result.isValid).toBe(false);
-    });
-
-    it('should return invalid for index without name', () => {
-      const config: DatabaseConfig = { name: 'test', version: 1, objectStoreName: 'test', keyPath: 'id', indexes: [{ name: '', keyPath: 'test' }] };
-      const result = validateDatabaseConfig(config);
-      expect(result.isValid).toBe(false);
-    });
-
-    it('should return invalid for index with empty name', () => {
-      const config: DatabaseConfig = { name: 'test', version: 1, objectStoreName: 'test', keyPath: 'id', indexes: [{ name: '', keyPath: 'test' }] };
-      const result = validateDatabaseConfig(config);
-      expect(result.isValid).toBe(false);
-    });
-
-    it('should return invalid for index without keyPath', () => {
-      const config: DatabaseConfig = { name: 'test', version: 1, objectStoreName: 'test', keyPath: 'id', indexes: [{ name: 'test', keyPath: '' }] };
-      const result = validateDatabaseConfig(config);
-      expect(result.isValid).toBe(false);
-    });
-
-    it('should return invalid for index with empty keyPath', () => {
-      const config: DatabaseConfig = { name: 'test', version: 1, objectStoreName: 'test', keyPath: 'id', indexes: [{ name: 'test', keyPath: '' }] };
-      const result = validateDatabaseConfig(config);
-      expect(result.isValid).toBe(false);
-    });
-
-    it('should return warning for index without unique', () => {
-      const config: DatabaseConfig = { name: 'test', version: 1, objectStoreName: 'test', keyPath: 'id', indexes: [{ name: 'test', keyPath: 'test' }] };
-      const result = validateDatabaseConfig(config);
-      expect(result.warnings).toContain('Índice 0: unique no definido (default: false)');
-    });
-
-    it('should return valid for minimal config', () => {
-      const config: DatabaseConfig = { name: 'test', version: 1, objectStoreName: 'test', keyPath: 'id', indexes: [] };
-      const result = validateDatabaseConfig(config);
       expect(result.isValid).toBe(true);
     });
 
-    it('should return valid for config with valid indexes', () => {
-      const config: DatabaseConfig = { name: 'test', version: 1, objectStoreName: 'test', keyPath: 'id', indexes: [{ name: 'test', keyPath: 'test', unique: true }] };
+    it('#Should add error when name is empty', () => {
+      const config: IDbConfig = {
+        name: '',
+        version: 1,
+        objectStores: []
+      };
+
       const result = validateDatabaseConfig(config);
-      expect(result.isValid).toBe(true);
+
+      expect(result.errors).toContain('El nombre de la base de datos es requerido');
+    });
+
+    it('#Should add error when name is whitespace', () => {
+      const config: IDbConfig = {
+        name: '   ',
+        version: 1,
+        objectStores: []
+      };
+
+      const result = validateDatabaseConfig(config);
+
+      expect(result.errors).toContain('El nombre de la base de datos es requerido');
+    });
+
+    it('#Should add error when version is undefined', () => {
+      const config: any = {
+        name: 'db',
+        objectStores: []
+      };
+
+      const result = validateDatabaseConfig(config);
+
+      expect(result.errors).toContain('La versión debe ser >= 1');
+    });
+
+    it('#Should add error when version is less than 1', () => {
+      const config: IDbConfig = {
+        name: 'db',
+        version: 0,
+        objectStores: []
+      };
+
+      const result = validateDatabaseConfig(config);
+
+      expect(result.errors).toContain('La versión debe ser >= 1');
+    });
+
+    it('#Should add error when objectStores is not array', () => {
+      const config: any = {
+        name: 'db',
+        version: 1,
+        objectStores: 'not-array'
+      };
+
+      const result = validateDatabaseConfig(config);
+
+      expect(result.errors).toContain('objectStores es requerido y debe ser un array');
+    });
+
+    it('#Should add error when objectStores is empty', () => {
+      const config: IDbConfig = {
+        name: 'db',
+        version: 1,
+        objectStores: []
+      };
+
+      const result = validateDatabaseConfig(config);
+
+      expect(result.errors).toContain('Debe haber al menos un object store');
+    });
+
+    it('#Should add error when object store name is empty', () => {
+      const config: IDbConfig = {
+        name: 'db',
+        version: 1,
+        objectStores: [{ name: '' }]
+      };
+
+      const result = validateDatabaseConfig(config);
+
+      expect(result.errors).toContain('Object store 0: el nombre es requerido');
+    });
+
+    it('#Should add error when object store name is whitespace', () => {
+      const config: IDbConfig = {
+        name: 'db',
+        version: 1,
+        objectStores: [{ name: '  ' }]
+      };
+
+      const result = validateDatabaseConfig(config);
+
+      expect(result.errors).toContain('Object store 0: el nombre es requerido');
+    });
+
+    it('#Should add error when indexes is not array', () => {
+      const config: any = {
+        name: 'db',
+        version: 1,
+        objectStores: [{ name: 'store', indexes: 'not-array' }]
+      };
+
+      const result = validateDatabaseConfig(config);
+
+      expect(result.errors).toContain('Object store 0: los índices deben ser un array');
+    });
+
+    it('#Should add error when index name is empty', () => {
+      const config: IDbConfig = {
+        name: 'db',
+        version: 1,
+        objectStores: [{
+          name: 'store',
+          indexes: [{ name: '', keyPath: 'field' }]
+        }]
+      };
+
+      const result = validateDatabaseConfig(config);
+
+      expect(result.errors).toContain('Object store 0, índice 0: el nombre es requerido');
+    });
+
+    it('#Should add error when index keyPath is empty string', () => {
+      const config: IDbConfig = {
+        name: 'db',
+        version: 1,
+        objectStores: [{
+          name: 'store',
+          indexes: [{ name: 'idx', keyPath: '' }]
+        }]
+      };
+
+      const result = validateDatabaseConfig(config);
+
+      expect(result.errors).toContain('Object store 0, índice 0: el keyPath es requerido');
+    });
+
+    it('#Should add error when index keyPath is empty array', () => {
+      const config: IDbConfig = {
+        name: 'db',
+        version: 1,
+        objectStores: [{
+          name: 'store',
+          indexes: [{ name: 'idx', keyPath: [] }]
+        }]
+      };
+
+      const result = validateDatabaseConfig(config);
+
+      expect(result.errors).toContain('Object store 0, índice 0: el keyPath es requerido');
+    });
+
+    it('#Should return complete-database type', () => {
+      const config: IDbConfig = {
+        name: 'db',
+        version: 1,
+        objectStores: [{ name: 'store' }]
+      };
+
+      const result = validateDatabaseConfig(config);
+
+      expect(result.type).toBe('complete-database');
+    });
+
+    it('#Should return empty warnings array', () => {
+      const config: IDbConfig = {
+        name: 'db',
+        version: 1,
+        objectStores: [{ name: 'store' }]
+      };
+
+      const result = validateDatabaseConfig(config);
+
+      expect(result.warnings.length).toBe(0);
     });
   });
 
   describe('validateImportedFile', () => {
-    it('should validate mocks export', () => {
-      const data = { type: 'mocks', mocks: [] };
+    it('#Should validate mocks export correctly', () => {
+      const data = { type: 'mocks', mocks: [{ id: 1 }] };
+
       const result = validateImportedFile(data);
+
       expect(result.type).toBe('mocks');
     });
 
-    it('should validate database export', () => {
-      const data = { type: 'complete-database', databaseConfig: { name: 'test', version: 1, objectStoreName: 'test', keyPath: 'id' }, mocks: [] };
+    it('#Should validate complete-database export correctly', () => {
+      const data = {
+        type: 'complete-database',
+        databaseConfig: { name: 'db', version: 1, objectStores: [{ name: 'store' }] },
+        mocks: []
+      };
+
       const result = validateImportedFile(data);
+
       expect(result.type).toBe('complete-database');
     });
 
-    it('should validate manual config', () => {
-      const data = { selectedContext: 'test' };
-      const result = validateImportedFile(data);
-      expect(result.type).toBe('manual-config');
-    });
+    it('#Should validate manual-config as valid', () => {
+      const data = { selectedContext: 'context' };
 
-    it('should return invalid for unknown type', () => {
-      const data = { unknown: 'field' };
       const result = validateImportedFile(data);
-      expect(result.isValid).toBe(false);
-    });
 
-    it('should return manual config as valid', () => {
-      const data = { selectedContext: 'test' };
-      const result = validateImportedFile(data);
       expect(result.isValid).toBe(true);
     });
 
-    it('should return warning for manual config', () => {
-      const data = { selectedContext: 'test' };
+    it('#Should return manual-config type', () => {
+      const data = { headers: {} };
+
       const result = validateImportedFile(data);
+
+      expect(result.type).toBe('manual-config');
+    });
+
+    it('#Should add warning for manual-config', () => {
+      const data = { nameMock: 'name' };
+
+      const result = validateImportedFile(data);
+
       expect(result.warnings).toContain('Configuración manual sin firma digital');
+    });
+
+    it('#Should return empty errors for manual-config', () => {
+      const data = { serviceCode: 'code' };
+
+      const result = validateImportedFile(data);
+
+      expect(result.errors.length).toBe(0);
+    });
+
+    it('#Should return invalid for unknown type', () => {
+      const data = { random: 'field' };
+
+      const result = validateImportedFile(data);
+
+      expect(result.isValid).toBe(false);
+    });
+
+    it('#Should return unknown type for unrecognized data', () => {
+      const data = { random: 'field' };
+
+      const result = validateImportedFile(data);
+
+      expect(result.type).toBe('unknown');
+    });
+
+    it('#Should add error for unknown format', () => {
+      const data = { random: 'field' };
+
+      const result = validateImportedFile(data);
+
+      expect(result.errors).toContain('Formato de archivo no reconocido');
+    });
+
+    it('#Should return empty warnings for unknown type', () => {
+      const data = { random: 'field' };
+
+      const result = validateImportedFile(data);
+
+      expect(result.warnings.length).toBe(0);
     });
   });
 });

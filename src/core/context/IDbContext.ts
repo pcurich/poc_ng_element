@@ -7,6 +7,8 @@
  * - D: Dependency Inversion - Permite inyección de implementaciones concretas
  */
 
+import { ITransactionStats } from "../types/database.types";
+
 export interface IDbContext {
   /**
    * Abre la conexión a la base de datos IndexedDB
@@ -28,11 +30,7 @@ export interface IDbContext {
    * @param fn Función que ejecuta operaciones en el store
    * @returns Promise que resuelve con el resultado de tipo T
    */
-  runTransaction<T>(
-    storeName: string,
-    mode: IDBTransactionMode,
-    fn: (store: IDBObjectStore) => IDBRequest | Promise<any> | void
-  ): Promise<T>;
+  runTransaction<T>(storeName: string, mode: IDBTransactionMode, fn: (store: IDBObjectStore) => IDBRequest | Promise<any> | void): Promise<T>;
 
   /**
    * Obtiene el nombre de la base de datos
@@ -57,4 +55,10 @@ export interface IDbContext {
    * @returns true si la DB está abierta, false en caso contrario
    */
   isOpen(): boolean;
+
+  /**
+   * Obtiene estadísticas de transacciones activas (útil para debugging y monitoreo)
+   * @returns Estadísticas con número de transacciones activas y su distribución por estado
+   */
+  getTransactionStats(): ITransactionStats;
 }
