@@ -3,7 +3,7 @@
   [class.visible]="showForm()" [class.hidden]="!showForm()" [class.minimized]="isMinimized()">
 
   <!-- Vista minimizada - Globo flotante -->
-  <div class="floating-bubble" *ngIf="isMinimized()" (click)="toggleMinimize(); $event.stopPropagation()">
+  <div class="floating-bubble" *ngIf="isMinimized()" (mousedown)="startDrag($event)" (click)="toggleMinimize(); $event.stopPropagation()">
     <div class="bubble-content">
       <span class="bubble-icon">🌐</span>
       <span class="bubble-badge" *ngIf="currentMocks().length > 0">{{ currentMocks().length }}</span>
