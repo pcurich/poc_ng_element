@@ -1,7 +1,7 @@
 // src/app/components/home/home.component.ts
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { HttpMockManagerComponent } from '../http-mock-manager/http-mock-manager.component';
+import { HttpMockManagerComponent } from '../components/http-mock-manager/http-mock-manager.component';
  
 
 @Component({
