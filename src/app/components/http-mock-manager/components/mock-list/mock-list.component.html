@@ -1,0 +1,89 @@
+<div class="mock-list">
+    <div class="list-header">
+        <div class="header-info">
+            <h3>Lista de Mocks</h3>
+            <span class="mock-count">{{ mocks()().length }} registros</span>
+        </div>
+        <button class="btn btn-secondary" (click)="onExportMocks()"
+            [disabled]="mocks()().length === 0 || isLoading()()">
+            <span class="icon">📥</span>
+            Exportar Todos
+        </button>
+    </div>
+
+    <div class="list-content" *ngIf="mocks()().length > 0; else noMocks">
+        <div class="mocks-grid">
+            <div *ngFor="let mock of mocks()()" class="mock-card" [class.selected]="selectedMockId() === mock.id"
+                (click)="onSelectMock(mock)">
+                <div class="mock-header">
+                    <div class="mock-title">
+                        <span class="mock-name">{{ mock.nameMock }}</span>
+                        <span class="mock-service">{{ mock.serviceCode }}</span>
+                    </div>
+                    <div class="mock-actions">
+                        <button class="btn-icon btn-edit" (click)="onEditMock(mock); $event.stopPropagation()"
+                            title="Editar mock">
+                            ✏️
+                        </button>
+                        <button class="btn-icon btn-delete" (click)="onDeleteMock(mock.id!); $event.stopPropagation()"
+                            title="Eliminar mock">
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mock-details">
+                    <div class="detail-row">
+                        <span class="detail-label">Método:</span>
+                        <span class="method-badge" [ngClass]="getMethodClass(mock.httpMethod)">
+                            {{ mock.httpMethod }}
+                        </span>
+                    </div>
+
+                    <div class="detail-row">
+                        <span class="detail-label">URL:</span>
+                        <span class="detail-value url">{{ mock.url }}</span>
+                    </div>
+
+                    <div class="detail-row">
+                        <span class="detail-label">Status:</span>
+                        <span class="status-badge" [ngClass]="getStatusCodeClass(mock.httpCodeResponseValue)">
+                            {{ mock.httpCodeResponseValue }}
+                        </span>
+                    </div>
+
+                    <div class="detail-row">
+                        <span class="detail-label">Delay:</span>
+                        <span class="detail-value">{{ mock.delayMs }}ms</span>
+                    </div>
+
+                    <div class="detail-row" *ngIf="mock.headers && getHeadersCount(mock.headers) > 0">
+                        <span class="detail-label">Headers:</span>
+                        <span class="detail-value">{{ getHeadersCount(mock.headers) }} configurados</span>
+                    </div>
+                </div>
+
+                <div class="mock-footer" *ngIf="mock.updatedAt">
+                    <span class="last-updated">
+                        Última actualización: {{ formatDate(mock.updatedAt) }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <ng-template #noMocks>
+        <div class="no-mocks">
+            <div class="no-mocks-icon">📋</div>
+            <p class="no-mocks-title">No hay mocks disponibles</p>
+            <p class="no-mocks-description">
+                Crea tu primer mock utilizando el formulario o importa desde un archivo
+            </p>
+        </div>
+    </ng-template>
+
+    <div class="loading-overlay" *ngIf="isLoading()()">
+        <div class="spinner"></div>
+        <span>Cargando mocks...</span>
+    </div>
+</div>

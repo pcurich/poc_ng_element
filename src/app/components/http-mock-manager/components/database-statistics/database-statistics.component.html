@@ -1,0 +1,45 @@
+<div class="database-stats" *ngIf="databaseStatus().exists">
+  <h5>📊 Estadísticas de Base de Datos</h5>
+  <div class="stats-grid">
+    <div class="stat-item">
+      <span class="stat-label">Nombre de Base de Datos:</span>
+      <span class="stat-value">{{ databaseConfig()?.name || 'Desconocido' }}</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Versión:</span>
+      <span class="stat-value">{{ databaseConfig()?.version || 'Desconocido' }}</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Almacén de Objetos:</span>
+      <span class="stat-value">{{ objectStoreNames() }}</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Estado:</span>
+      <app-status-badge [status]="databaseStatus().isInitialized ? 'ok' : 'warning'"
+        [text]="databaseStatus().isInitialized ? '✅ Listo' : '⚠️ No Inicializado'">
+      </app-status-badge>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Registros Totales:</span>
+      <span class="stat-value">{{ statistics()?.totalMocks || 0 }}</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Servicios Activos:</span>
+      <span class="stat-value">{{ totalServices() }}</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-label">Retraso Promedio:</span>
+      <span class="stat-value">{{ statistics()?.averageDelayMs || 0 }}ms</span>
+    </div>
+  </div>
+
+  <!-- Services List -->
+  <div class="services-overview" *ngIf="statistics()?.mostUsedServiceCodes && (statistics()?.mostUsedServiceCodes?.length ?? 0) > 0">
+    <h6>🔧 Servicios Activos:</h6>
+    <div class="service-tags">
+      <span class="service-tag" *ngFor="let service of statistics()?.mostUsedServiceCodes || []">
+        {{ service | json }}
+      </span>
+    </div>
+  </div>
+</div>

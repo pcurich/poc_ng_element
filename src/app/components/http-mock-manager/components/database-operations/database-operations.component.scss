@@ -1,0 +1,128 @@
+// Database Operations Component Styles
+.database-operations {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.operations-header {
+  h3 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+}
+
+.operations-buttons {
+  display: flex;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+
+  .btn {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    .icon {
+      font-size: 1.1rem;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  .btn-secondary {
+    background-color: var(--secondary);
+    color: white;
+
+    &:hover:not(:disabled) {
+      background-color: var(--secondary-dark);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+  }
+
+  .btn-warning {
+    background-color: var(--warning);
+    color: white;
+
+    &:hover:not(:disabled) {
+      background-color: var(--warning-dark);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
+    }
+  }
+}
+
+.danger-zone {
+  border: 2px solid var(--danger);
+  border-radius: var(--border-radius);
+  padding: var(--space-lg);
+  background-color: rgba(244, 67, 54, 0.05);
+
+  .danger-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-md);
+
+    .icon {
+      font-size: 1.3rem;
+      color: var(--danger);
+    }
+
+    h4 {
+      margin: 0;
+      color: var(--danger);
+      font-size: 1rem;
+      font-weight: 600;
+    }
+  }
+
+  .danger-description {
+    margin: 0 0 var(--space-md) 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  .btn-danger {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    border: none;
+    border-radius: var(--border-radius);
+    background-color: var(--danger);
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    .icon {
+      font-size: 1.1rem;
+    }
+
+    &:hover:not(:disabled) {
+      background-color: var(--danger-dark);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(244, 67, 54, 0.3);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}

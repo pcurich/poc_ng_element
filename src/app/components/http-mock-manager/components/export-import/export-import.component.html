@@ -1,0 +1,97 @@
+<div class="export-import">
+  <!-- Export Section -->
+  <div class="export-section">
+    <div class="section-header">
+      <h3>Exportar Datos</h3>
+      <span class="section-icon">📤</span>
+    </div>
+    <p class="section-description">
+      Descarga todos los mocks configurados en diferentes formatos
+    </p>
+    <div class="export-actions">
+      <button class="btn btn-primary" (click)="onExportJSON()">
+        <span class="icon">📄</span>
+        Exportar como JSON
+      </button>
+      <button class="btn btn-secondary" (click)="onExportCSV()">
+        <span class="icon">📊</span>
+        Exportar como CSV
+      </button>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Import Section -->
+  <div class="import-section">
+    <div class="section-header">
+      <h3>Importar Datos</h3>
+      <span class="section-icon">📥</span>
+    </div>
+    <p class="section-description">
+      Carga mocks desde un archivo JSON o CSV (los datos existentes se sobrescribirán)
+    </p>
+
+    <div class="import-content">
+      <!-- File Input (Hidden) -->
+      <input
+        type="file"
+        #fileInput
+        accept=".json,.csv"
+        (change)="onFileSelected($event)"
+        style="display: none"
+      />
+
+      <!-- File Selection Area -->
+      <div class="file-select-area" *ngIf="!selectedFile(); else fileSelected">
+        <button class="btn btn-outline" (click)="selectFile()">
+          <span class="icon">📁</span>
+          Seleccionar Archivo
+        </button>
+        <p class="file-hint">Formatos aceptados: .json, .csv</p>
+      </div>
+
+      <!-- File Selected Display -->
+      <ng-template #fileSelected>
+        <div class="file-info">
+          <div class="file-details">
+            <span class="file-icon">📎</span>
+            <div class="file-meta">
+              <span class="file-name">{{ selectedFile()?.name }}</span>
+              <span class="file-size">{{ getFileSize(selectedFile()?.size || 0) }}</span>
+            </div>
+          </div>
+          <button class="btn-icon btn-remove" (click)="clearSelectedFile()" title="Remover archivo">
+            ✕
+          </button>
+        </div>
+
+        <div class="import-actions">
+          <button class="btn btn-primary" (click)="onImportFile()">
+            <span class="icon">⬆️</span>
+            Importar Archivo
+          </button>
+          <button class="btn btn-secondary" (click)="selectFile()">
+            <span class="icon">🔄</span>
+            Cambiar Archivo
+          </button>
+        </div>
+      </ng-template>
+
+      <!-- Import Error -->
+      <div class="import-error" *ngIf="importError()">
+        <span class="error-icon">⚠️</span>
+        <span class="error-message">{{ importError() }}</span>
+      </div>
+    </div>
+
+    <!-- Import Warning -->
+    <div class="import-warning">
+      <span class="warning-icon">⚠️</span>
+      <div class="warning-content">
+        <strong>Advertencia:</strong> Al importar datos, todos los mocks existentes serán reemplazados.
+        Se recomienda exportar los datos actuales antes de realizar la importación.
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,69 @@
+<div class="json-editor">
+  <div class="editor-header">
+    <label class="editor-label">{{ label() }}</label>
+    <div class="editor-actions">
+      <button
+        class="btn-icon"
+        (click)="formatJson()"
+        [disabled]="readonly()"
+        title="Formatear JSON"
+      >
+        🎨
+      </button>
+      <button
+        class="btn-icon"
+        (click)="copyToClipboard()"
+        title="Copiar al portapapeles"
+      >
+        📋
+      </button>
+      <button
+        class="btn-icon"
+        (click)="clearEditor()"
+        [disabled]="readonly()"
+        title="Limpiar editor"
+      >
+        🗑️
+      </button>
+      <button
+        class="btn btn-primary btn-sm"
+        (click)="onSave()"
+        [disabled]="!isValid() || readonly()"
+        title="Guardar JSON"
+      >
+        💾 Guardar
+      </button>
+    </div>
+  </div>
+
+  <div class="editor-content">
+    <textarea
+      class="json-textarea"
+      [class.invalid]="!isValid()"
+      [value]="value()"
+      (input)="onValueChange($any($event.target).value)"
+      [placeholder]="placeholder()"
+      [rows]="rows()"
+      [readonly]="readonly()"
+      spellcheck="false"
+    ></textarea>
+  </div>
+
+  <div class="editor-footer">
+    <div class="validation-info">
+      <span
+        class="validation-status"
+        [class.valid]="isValid()"
+        [class.invalid]="!isValid()"
+      >
+        {{ isValid() ? '✓ JSON válido' : '✕ JSON inválido' }}
+      </span>
+      <span class="validation-message" *ngIf="validationMessage()">
+        {{ validationMessage() }}
+      </span>
+    </div>
+    <div class="editor-info">
+      <span class="char-count">{{ value().length }} caracteres</span>
+    </div>
+  </div>
+</div>

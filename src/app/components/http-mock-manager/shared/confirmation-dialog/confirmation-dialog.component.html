@@ -1,0 +1,14 @@
+<div class="confirmation-overlay" *ngIf="visible">
+  <div class="confirmation-dialog" [class.danger-zone]="type === 'danger'">
+    <h5>{{ title }}</h5>
+    <p>{{ message }}</p>
+    <p class="warning-text" *ngIf="warningMessage">{{ warningMessage }}</p>
+    <div class="dialog-actions">
+      <button class="btn btn-secondary" (click)="onCancel()">{{ cancelText }}</button>
+      <button class="btn" [class.btn-danger]="type === 'danger'" [class.btn-warning]="type === 'warning'"
+        [class.btn-primary]="type === 'info'" (click)="onConfirm()">
+        {{ confirmText }}
+      </button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,121 @@
+<div class="mock-form">
+  <div class="form-header">
+    <h3>{{ isEditing() ? 'Editar Mock' : 'Crear Nuevo Mock' }}</h3>
+    <button
+      *ngIf="isEditing()"
+      class="btn btn-secondary btn-sm"
+      (click)="onCreateNew()"
+      type="button"
+    >
+      <span class="icon">➕</span>
+      Nuevo
+    </button>
+  </div>
+
+  <form [formGroup]="mockForm" (ngSubmit)="onSubmit()" class="form-content">
+    <div class="form-row">
+      <div class="form-group">
+        <label for="nameMock">Nombre del Mock *</label>
+        <input
+          type="text"
+          id="nameMock"
+          formControlName="nameMock"
+          placeholder="Ej: Login exitoso"
+          [class.invalid]="isFieldInvalid('nameMock')"
+        />
+        <span class="error-message" *ngIf="isFieldInvalid('nameMock')">
+          {{ getFieldError('nameMock') }}
+        </span>
+      </div>
+
+      <div class="form-group">
+        <label for="serviceCode">Código de Servicio *</label>
+        <input
+          type="text"
+          id="serviceCode"
+          formControlName="serviceCode"
+          placeholder="Ej: AUTH_SERVICE"
+          [class.invalid]="isFieldInvalid('serviceCode')"
+        />
+        <span class="error-message" *ngIf="isFieldInvalid('serviceCode')">
+          {{ getFieldError('serviceCode') }}
+        </span>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group full-width">
+        <label for="url">URL *</label>
+        <input
+          type="text"
+          id="url"
+          formControlName="url"
+          placeholder="/api/auth/login"
+          [class.invalid]="isFieldInvalid('url')"
+        />
+        <span class="error-message" *ngIf="isFieldInvalid('url')">
+          {{ getFieldError('url') }}
+        </span>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="httpMethod">Método HTTP *</label>
+        <select id="httpMethod" formControlName="httpMethod">
+          <option *ngFor="let method of httpMethods()" [value]="method">
+            {{ method }}
+          </option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="httpCodeResponseValue">Código de Respuesta *</label>
+        <select id="httpCodeResponseValue" formControlName="httpCodeResponseValue">
+          <option *ngFor="let code of httpCodeResponse()" [value]="code">
+            {{ code }}
+          </option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="delayMs">Delay (ms) *</label>
+        <input
+          type="number"
+          id="delayMs"
+          formControlName="delayMs"
+          min="0"
+          placeholder="0"
+          [class.invalid]="isFieldInvalid('delayMs')"
+        />
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group full-width">
+        <label for="responseBody">Response Body (JSON) *</label>
+        <textarea
+          id="responseBody"
+          formControlName="responseBody"
+          rows="8"
+          placeholder='{"message": "Success"}'
+          [class.invalid]="isFieldInvalid('responseBody')"
+        ></textarea>
+        <span class="error-message" *ngIf="isFieldInvalid('responseBody')">
+          {{ getFieldError('responseBody') }}
+        </span>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary" [disabled]="mockForm.invalid">
+        <span class="icon">💾</span>
+        {{ isEditing() ? 'Actualizar' : 'Guardar' }}
+      </button>
+      <button type="button" class="btn btn-secondary" (click)="onReset()">
+        <span class="icon">↺</span>
+        Resetear
+      </button>
+    </div>
+  </form>
+</div>

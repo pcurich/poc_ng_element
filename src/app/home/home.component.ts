@@ -1,13 +1,12 @@
-// src/app/components/home/home.component.ts
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { HttpMockManagerComponent } from '../components/http-mock-manager/http-mock-manager.component';
- 
+import { HttpMockManagerContainerComponent } from '../components/http-mock-manager/pages/http-mock-manager-container.component';
+import { HttpMockManagerComponent } from '../components';
 
 @Component({
     selector: 'app-home',
     standalone: true,
-    imports: [RouterLink, HttpMockManagerComponent],
+    imports: [RouterLink, HttpMockManagerContainerComponent, HttpMockManagerComponent],
     templateUrl: './home.component.html',
     styleUrls: ['./home.component.scss']
 })

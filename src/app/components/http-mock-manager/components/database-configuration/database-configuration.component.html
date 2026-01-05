@@ -1,0 +1,90 @@
+<div class="database-setup-panel">
+  <div class="setup-header">
+    <h3>🗃️ Configuración de Base de Datos</h3>
+    <p>No se encontró una base de datos. Configure los parámetros para crear una nueva:</p>
+  </div>
+
+  <div class="form-group">
+    <label for="dbName">Nombre de la Base de Datos:</label>
+    <input id="dbName" type="text" [(ngModel)]="dbName" placeholder="Ej: HttpMocksDB" class="form-input">
+  </div>
+
+  <div class="form-group">
+    <label for="dbVersion">Versión:</label>
+    <input id="dbVersion" type="number" [(ngModel)]="dbVersion" min="1" placeholder="Ej: 1" class="form-input">
+  </div>
+
+  <div class="form-group">
+    <label for="dbObjectStoreName">Nombre del Object Store:</label>
+    <input id="dbObjectStoreName" type="text" [(ngModel)]="dbObjectStoreName" placeholder="Ej: httpMocks"
+      class="form-input">
+  </div>
+
+  <div class="form-group">
+    <label for="dbKeyPath">Key Path:</label>
+    <input id="dbKeyPath" type="text" [(ngModel)]="dbKeyPath" placeholder="Ej: id" class="form-input">
+  </div>
+
+  <!-- Gestión de Índices -->
+  <div class="indexes-section">
+    <h4>🔍 Índices de Base de Datos</h4>
+
+    <!-- Add New Index -->
+    <div class="index-form">
+      <div class="index-header">
+        <h5>➕ Agregar Índice</h5>
+        <button class="btn btn-primary" (click)="addIndex()"
+          [disabled]="!newIndexName().trim() || !newIndexKeyPath().trim()">
+          Agregar
+        </button>
+      </div>
+      <div class="form-row">
+        <input type="text" [(ngModel)]="newIndexName" placeholder="Nombre del índice..." class="form-input flex-1"
+          (keydown.enter)="addIndex()">
+        <input type="text" [(ngModel)]="newIndexKeyPath" placeholder="Key path..." class="form-input flex-1"
+          (keydown.enter)="addIndex()">
+      </div>
+    </div>
+
+    <!-- Current Indexes -->
+    <div class="indexes-list" *ngIf="getIndexCount() > 0">
+      <h5>📋 Índices Configurados ({{ getIndexCount() }})</h5>
+      <div class="index-item" *ngFor="let index of dbIndexes">
+        <div class="index-content">
+          <span class="index-name">{{ index.name }}:</span>
+          <span class="index-keypath">{{ index.keyPath }}</span>
+        </div>
+        <button class="btn-delete" (click)="removeIndex(index.name)" title="Eliminar Índice">
+          ❌
+        </button>
+      </div>
+    </div>
+
+    <div class="empty-state" *ngIf="getIndexCount() === 0">
+      <span class="empty-icon">🔍</span>
+      <p>No hay índices configurados. Los índices mejoran el rendimiento de consultas.</p>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <button class="btn btn-secondary" (click)="onLoadDefault()" type="button">
+      📄 Cargar Configuración por Defecto
+    </button>
+
+    <button class="btn btn-primary" (click)="onCreate()"
+      [disabled]="!dbName || !dbObjectStoreName || !dbKeyPath || isLoading()" type="button">
+      <span *ngIf="!isLoading()">🚀 Crear Base de Datos</span>
+      <span *ngIf="isLoading()">⏳ Creando...</span>
+    </button>
+  </div>
+
+  <!-- Estado de la operación -->
+  <div *ngIf="lastOperation()" class="status-info">
+    <span class="status-label">Estado:</span> {{ lastOperation() }}
+  </div>
+
+  <!-- Errores -->
+  <div *ngIf="presenterError()" class="error-message">
+    ❌ {{ presenterError() }}
+  </div>
+</div>

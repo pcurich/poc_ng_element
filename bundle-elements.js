@@ -117,10 +117,6 @@ import './${mainFile.replace('.js', '')}';
       } else {
         console.log('✅ Verified: No external imports found');
       }
-
-      // Generar archivos de documentación
-      await generateDemoHTML(outputPath);
-      await generateUsageGuide(outputPath);
       
     } else {
       console.error('❌ Bundle file was not created');
@@ -139,124 +135,6 @@ import './${mainFile.replace('.js', '')}';
   }
 }
 
-async function generateDemoHTML(outputPath) {
-  const demoContent = `<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTTP Mock Manager - Demo</title>
-    <style>
-        body {
-            margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: white;
-        }
-        
-        .demo-container {
-            max-width: 800px;
-            text-align: center;
-            padding: 2rem;
-        }
-        
-        .title {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-        }
-        
-        .subtitle {
-            font-size: 1.2rem;
-            margin-bottom: 2rem;
-            opacity: 0.9;
-        }
-        
-        .code {
-            background: rgba(0, 0, 0, 0.3);
-            padding: 1rem;
-            border-radius: 8px;
-            font-family: 'Courier New', monospace;
-            margin: 1rem 0;
-        }
-        
-        .demo-area {
-            margin: 3rem 0;
-            padding: 2rem;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-        }
-    </style>
-</head>
-<body>
-    <div class="demo-container">
-        <h1 class="title">🌐 HTTP Mock Manager</h1>
-        <p class="subtitle">Self-Contained Custom Element • No External Dependencies</p>
-        
-        <div class="code">
-            &lt;script src="http-mock-manager.js"&gt;&lt;/script&gt;<br>
-            &lt;http-mock-manager&gt;&lt;/http-mock-manager&gt;
-        </div>
-        
-        <div class="demo-area">
-            <h3>🚀 Live Demo</h3>
-            <http-mock-manager data-floating="true"></http-mock-manager>
-        </div>
-    </div>
-
-    <script src="http-mock-manager.js"></script>
-</body>
-</html>`;
-
-  await fs.writeFile(path.join(outputPath, 'demo.html'), demoContent);
-  console.log(`📄 Demo HTML created`);
-}
-
-async function generateUsageGuide(outputPath) {
-  const usageContent = `# HTTP Mock Manager - Usage Guide
-
-## 🎯 Overview
-
-Self-contained Angular 20 custom element with NO external dependencies.
-
-## 📦 Installation
-
-\`\`\`html
-<script src="http-mock-manager.js"></script>
-<http-mock-manager></http-mock-manager>
-\`\`\`
-
-## ✅ Features
-
-- **True single-file bundle**: No external imports
-- **Self-contained**: All Angular code included
-- **Zoneless**: Optimized with Signals
-- **Universal**: Works anywhere
-
-## 🔧 Integration
-
-Works in any HTML page, React, Vue, or other framework.
-
-\`\`\`html
-<!DOCTYPE html>
-<html>
-<head>
-    <script src="http-mock-manager.js"></script>
-</head>
-<body>
-    <http-mock-manager></http-mock-manager>
-</body>
-</html>
-\`\`\`
-`;
-
-  await fs.writeFile(path.join(outputPath, 'USAGE.md'), usageContent);
-  console.log(`📚 Usage guide created`);
-}
 
 // Ejecutar
 bundleElements().catch(console.error);

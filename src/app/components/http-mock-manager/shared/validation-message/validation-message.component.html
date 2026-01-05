@@ -1,0 +1,13 @@
+<!-- Global Validation Message -->
+<div *ngIf="message() && position === 'global'" class="global-validation-message"
+  [class.success-message]="message()?.type === 'success'" [class.error-message]="message()?.type === 'error'"
+  [class.info-message]="message()?.type === 'info'">
+  {{ message()?.text }}
+</div>
+
+<!-- Local Validation Message -->
+<div *ngIf="message() && position === 'local'" class="validation-message"
+  [class.success-message]="message()?.type === 'success'" [class.error-message]="message()?.type === 'error'"
+  [class.info-message]="message()?.type === 'info'">
+  {{ message()?.text }}
+</div>
