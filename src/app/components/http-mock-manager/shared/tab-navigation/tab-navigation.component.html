@@ -1,0 +1,21 @@
+<!-- Group Navigation -->
+<div *ngIf="type === 'group'" class="group-navigation">
+  <div class="group-tabs">
+    <button *ngFor="let tab of tabs" class="group-btn" [class.active]="activeTab() === tab.id"
+      (click)="selectTab(tab.id)">
+      <span *ngIf="tab.icon">{{ tab.icon }}</span>
+      {{ tab.label }}
+    </button>
+  </div>
+</div>
+
+<!-- Sub Navigation -->
+<div *ngIf="type === 'sub'" class="sub-navigation">
+  <div class="sub-tabs">
+    <button *ngFor="let tab of tabs" class="sub-tab-btn" [class.active]="activeTab() === tab.id"
+      (click)="selectTab(tab.id)">
+      <span *ngIf="tab.icon">{{ tab.icon }}</span>
+      {{ tab.label }}
+    </button>
+  </div>
+</div>

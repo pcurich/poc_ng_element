@@ -1,0 +1,61 @@
+<div class="service-code-selector">
+  <div class="selector-header">
+    <label for="serviceCode" class="selector-label">Código de Servicio</label>
+    <span class="services-count" *ngIf="availableServiceCodes()().length > 0">
+      {{ availableServiceCodes()().length }} servicios disponibles
+    </span>
+  </div>
+
+  <div class="selector-content">
+    <select
+      id="serviceCode"
+      class="service-select"
+      [value]="selectedServiceCode()"
+      (change)="onServiceCodeChange($any($event.target).value)"
+    >
+      <option value="" disabled>Selecciona un servicio...</option>
+      <option
+        *ngFor="let service of availableServiceCodes()()"
+        [value]="service.serviceCode"
+      >
+        {{ service.serviceCode }} ({{ service.count }} mocks)
+      </option>
+    </select>
+
+    <button
+      class="btn btn-primary"
+      (click)="onLoadMocks()"
+      [disabled]="!selectedServiceCode()"
+      title="Cargar mocks del servicio seleccionado"
+    >
+      <span class="icon">🔄</span>
+      Cargar Mocks
+    </button>
+  </div>
+
+  <div class="selector-info" *ngIf="selectedServiceCode()">
+    <div class="info-card">
+      <div class="info-item">
+        <span class="info-label">Servicio:</span>
+        <span class="info-value">{{ selectedServiceCode() }}</span>
+      </div>
+      <div class="info-item" *ngIf="getServiceStats(selectedServiceCode())">
+        <span class="info-label">Total de mocks:</span>
+        <span class="info-value">{{ getServiceStats(selectedServiceCode())?.count }}</span>
+      </div>
+      <div class="info-item" *ngIf="getServiceStats(selectedServiceCode())?.lastUpdated">
+        <span class="info-label">Última actualización:</span>
+        <span class="info-value">
+          {{ formatLastUpdated(getServiceStats(selectedServiceCode())?.lastUpdated) }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="auto-load-info" *ngIf="autoLoad()">
+    <span class="info-icon">ℹ️</span>
+    <span class="info-text">
+      Los mocks se cargarán automáticamente al seleccionar un servicio
+    </span>
+  </div>
+</div>

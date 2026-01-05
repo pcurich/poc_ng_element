@@ -1,0 +1,239 @@
+// Export Import Component Styles
+.export-import {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.export-section,
+.import-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    h3 {
+      margin: 0;
+      color: var(--text-primary);
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .section-icon {
+      font-size: 1.5rem;
+    }
+  }
+
+  .section-description {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+}
+
+.export-actions {
+  display: flex;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.divider {
+  height: 1px;
+  background-color: var(--border-color);
+  margin: var(--space-md) 0;
+}
+
+.import-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+
+  .file-select-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-xl);
+    border: 2px dashed var(--border-color);
+    border-radius: var(--border-radius);
+    background-color: var(--background-alt);
+    text-align: center;
+
+    .file-hint {
+      margin: 0;
+      font-size: 0.85rem;
+      color: var(--text-tertiary);
+    }
+  }
+
+  .file-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-md);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background-color: var(--background-alt);
+
+    .file-details {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      flex: 1;
+
+      .file-icon {
+        font-size: 1.5rem;
+      }
+
+      .file-meta {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-xs);
+
+        .file-name {
+          font-weight: 600;
+          color: var(--text-primary);
+          font-size: 0.9rem;
+        }
+
+        .file-size {
+          font-size: 0.8rem;
+          color: var(--text-secondary);
+        }
+      }
+    }
+
+    .btn-remove {
+      padding: var(--space-xs);
+      font-size: 1.2rem;
+      color: var(--text-secondary);
+
+      &:hover {
+        color: var(--danger);
+        background-color: rgba(244, 67, 54, 0.1);
+      }
+    }
+  }
+
+  .import-actions {
+    display: flex;
+    gap: var(--space-md);
+    flex-wrap: wrap;
+  }
+
+  .import-error {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-md);
+    background-color: rgba(244, 67, 54, 0.1);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--danger);
+
+    .error-icon {
+      font-size: 1.2rem;
+      color: var(--danger);
+    }
+
+    .error-message {
+      color: var(--danger);
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+  }
+}
+
+.import-warning {
+  display: flex;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background-color: rgba(255, 152, 0, 0.1);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--warning);
+
+  .warning-icon {
+    font-size: 1.2rem;
+    color: var(--warning);
+    flex-shrink: 0;
+  }
+
+  .warning-content {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+
+    strong {
+      color: var(--warning);
+      font-weight: 600;
+    }
+  }
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  .icon {
+    font-size: 1rem;
+  }
+
+  &.btn-primary {
+    background-color: var(--primary);
+    color: white;
+
+    &:hover {
+      background-color: var(--primary-dark);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+    }
+  }
+
+  &.btn-secondary {
+    background-color: var(--secondary);
+    color: white;
+
+    &:hover {
+      background-color: var(--secondary-dark);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+  }
+
+  &.btn-outline {
+    background-color: transparent;
+    color: var(--primary);
+    border: 2px solid var(--primary);
+
+    &:hover {
+      background-color: var(--primary);
+      color: white;
+      transform: translateY(-1px);
+    }
+  }
+}
+
+.btn-icon {
+  padding: var(--space-xs);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: var(--border-radius);
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: var(--background-alt);
+  }
+}

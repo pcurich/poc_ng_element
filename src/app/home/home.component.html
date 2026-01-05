@@ -36,7 +36,16 @@
     </div>
 </div>
 
-<http-mock-manager serviceCode="demo-service" nameMock="Demo Mock" url="https://api.example.com/users" httpMethod="GET"
+<http-mock-manager 
+    serviceCode="demo-service" nameMock="Demo Mock" url="https://api.example.com/users" httpMethod="GET"
     [delayMs]="1000" responseBody='{"message": "Hello from HTTP Mock!"}'
     (saveMockSchemaEvent)="onMockSchemaSaved($event)" (contextTypeChangeEvent)="onContextChanged($event)">
 </http-mock-manager>
+
+<app-http-mock-manager-container></app-http-mock-manager-container>
+
+<!-- <app-http-mock-manager-page
+ serviceCode="demo-service" nameMock="Demo Mock" url="https://api.example.com/users" httpMethod="GET"
+     responseBody='{"message": "Hello from HTTP Mock!"}'
+    (saveMockSchemaEvent)="onMockSchemaSaved($event)" (contextTypeChangeEvent)="onContextChanged($event)">
+</app-http-mock-manager-page> -->

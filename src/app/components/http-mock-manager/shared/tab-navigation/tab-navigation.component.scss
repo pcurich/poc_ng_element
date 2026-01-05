@@ -1,0 +1,75 @@
+// Tab Navigation Styles - Extracted from http-mock-manager.component.scss
+
+// Group Navigation
+.group-navigation {
+  border-bottom: 1px solid var(--border, #dee2e6);
+  background: var(--light, #f8f9fa);
+}
+
+.group-tabs {
+  display: flex;
+}
+
+.group-btn {
+  flex: 1;
+  padding: var(--space-sm, 8px) var(--space-sm, 8px);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: var(--font-sm, 13px);
+  color: #6c757d;
+  font-weight: 500;
+  transition: var(--transition, all 0.2s ease);
+  border-bottom: 2px solid transparent;
+  text-align: center;
+
+  &:hover {
+    background: rgba(13, 110, 253, 0.06);
+    color: var(--primary, #002a8d);
+  }
+
+  &.active {
+    background: white;
+    color: var(--primary, #002a8d);
+    border-bottom-color: var(--secondary, #ff7800);
+    font-weight: 600;
+  }
+}
+
+// Sub Navigation
+.sub-navigation {
+  border-bottom: 1px solid var(--border, #dee2e6);
+  background: #fff;
+}
+
+.sub-tabs {
+  display: flex;
+  gap: var(--space-xs, 4px);
+  padding: var(--space-sm, 8px) var(--space-md, 16px);
+  justify-content: space-between;
+}
+
+.sub-tab-btn {
+  padding: 6px var(--space-sm, 8px);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: var(--font-xs, 11px);
+  color: #6c757d;
+  border-radius: 4px;
+  transition: var(--transition, all 0.2s ease);
+  line-height: 1.2;
+
+  &:hover {
+    background: rgba(13, 110, 253, 0.06);
+    color: var(--primary, #002a8d);
+    border-color: rgba(13, 110, 253, 0.15);
+  }
+
+  &.active {
+    background: var(--primary, #002a8d);
+    color: white;
+    border-color: var(--primary, #002a8d);
+    font-weight: 500;
+  }
+}

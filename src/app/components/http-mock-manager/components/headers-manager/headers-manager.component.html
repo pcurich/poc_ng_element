@@ -1,0 +1,124 @@
+<div class="headers-manager">
+  <div class="headers-header">
+    <h3>Gestión de Headers HTTP</h3>
+    <button class="btn btn-primary btn-sm" (click)="onSave()">
+      <span class="icon">💾</span>
+      Guardar Headers
+    </button>
+  </div>
+
+  <!-- Add New Header -->
+  <div class="add-header-section">
+    <div class="input-group">
+      <input
+        type="text"
+        [(ngModel)]="newHeaderKey"
+        placeholder="Nombre del header (ej: Content-Type)"
+        class="header-key-input"
+      />
+      <input
+        type="text"
+        [(ngModel)]="newHeaderValue"
+        placeholder="Valor del header (ej: application/json)"
+        class="header-value-input"
+      />
+      <button class="btn btn-primary" (click)="addHeader()">
+        <span class="icon">➕</span>
+        Agregar
+      </button>
+    </div>
+  </div>
+
+  <!-- Common Headers -->
+  <div class="common-headers">
+    <h4>Headers Comunes</h4>
+    <div class="common-headers-list">
+      <button
+        *ngFor="let header of commonHeaders"
+        class="common-header-btn"
+        (click)="addCommonHeader(header)"
+        title="Clic para agregar: {{ header.key }}: {{ header.value }}"
+      >
+        <span class="header-key">{{ header.key }}</span>
+        <span class="header-separator">:</span>
+        <span class="header-value">{{ header.value }}</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Current Headers List -->
+  <div class="current-headers">
+    <h4>Headers Actuales ({{ getHeadersArray().length }})</h4>
+    
+    <div class="headers-list" *ngIf="getHeadersArray().length > 0; else noHeaders">
+      <div
+        *ngFor="let header of getHeadersArray()"
+        class="header-item"
+        [class.editing]="editingHeaderKey() === header.key"
+      >
+        <div class="header-content" *ngIf="editingHeaderKey() !== header.key">
+          <div class="header-info">
+            <span class="header-key">{{ header.key }}</span>
+            <span class="header-separator">:</span>
+            <span class="header-value">{{ header.value }}</span>
+          </div>
+          <div class="header-actions">
+            <button
+              class="btn-icon btn-edit"
+              (click)="editHeader(header.key)"
+              title="Editar header"
+            >
+              ✏️
+            </button>
+            <button
+              class="btn-icon btn-delete"
+              (click)="removeHeader(header.key)"
+              title="Eliminar header"
+            >
+              🗑️
+            </button>
+          </div>
+        </div>
+
+        <!-- Edit Mode -->
+        <div class="header-edit" *ngIf="editingHeaderKey() === header.key">
+          <input
+            type="text"
+            [value]="header.key"
+            #editKey
+            placeholder="Nombre del header"
+            class="edit-key-input"
+          />
+          <input
+            type="text"
+            [value]="header.value"
+            #editValue
+            placeholder="Valor del header"
+            class="edit-value-input"
+          />
+          <div class="edit-actions">
+            <button
+              class="btn btn-primary btn-sm"
+              (click)="updateHeader(header.key, editKey.value, editValue.value)"
+            >
+              ✓
+            </button>
+            <button
+              class="btn btn-secondary btn-sm"
+              (click)="editingHeaderKey.set(null)"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ng-template #noHeaders>
+      <div class="no-headers">
+        <p>No hay headers configurados</p>
+        <p class="hint">Agrega un header personalizado o selecciona uno común</p>
+      </div>
+    </ng-template>
+  </div>
+</div>

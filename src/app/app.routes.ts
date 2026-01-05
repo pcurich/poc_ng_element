@@ -1,11 +1,15 @@
-// src/app/app.routes.ts
 import { Routes } from '@angular/router';
 
 export const routes: Routes = [
   {
     path: '',
-    loadComponent: () => import('./components/http-mock-manager/http-mock-manager.component')
-      .then(m => m.HttpMockManagerComponent)
+    redirectTo: 'admin',
+    pathMatch: 'full'
+  },
+  {
+    path: 'home',
+    loadComponent: () => import('./home/home.component')
+      .then(m => m.HomeComponent)
   },
   {
     path: 'admin',

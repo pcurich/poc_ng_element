@@ -1,0 +1,46 @@
+<div class="database-operations">
+  <div class="operations-header">
+    <h3>Operaciones de Base de Datos</h3>
+  </div>
+
+  <div class="operations-buttons">
+    <button
+      class="btn btn-secondary"
+      (click)="onRefreshStats()"
+      [disabled]="isLoading()() || databaseStatus()() === 'not-initialized'"
+      title="Actualizar estadísticas de la base de datos"
+    >
+      <span class="icon">🔄</span>
+      Actualizar Estadísticas
+    </button>
+
+    <button
+      class="btn btn-warning"
+      (click)="onReinitializeDatabase()"
+      [disabled]="isLoading()()"
+      title="Reinicializar la base de datos (mantiene datos)"
+    >
+      <span class="icon">⚙️</span>
+      Reinicializar DB
+    </button>
+  </div>
+
+  <div class="danger-zone">
+    <div class="danger-header">
+      <span class="icon">⚠️</span>
+      <h4>Zona de Peligro</h4>
+    </div>
+    <p class="danger-description">
+      Esta acción eliminará permanentemente todos los datos de la base de datos.
+    </p>
+    <button
+      class="btn btn-danger"
+      (click)="onDeleteDatabase()"
+      [disabled]="isLoading()() || databaseStatus()() === 'not-initialized'"
+      title="Eliminar base de datos y todos sus datos"
+    >
+      <span class="icon">🗑️</span>
+      Eliminar Base de Datos
+    </button>
+  </div>
+</div>

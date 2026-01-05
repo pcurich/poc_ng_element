@@ -85,7 +85,7 @@
                 }
               ],
               "externalDependencies": [],
-              "browser": "src/main-elements-clean.ts"
+              "browser": "src/main-elements.ts"
             }
           },
           "defaultConfiguration": "production"
